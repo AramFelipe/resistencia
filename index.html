@@ -254,6 +254,17 @@ body.segredo .gear{display:none}
 .deck-count{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.12em;
   text-transform:uppercase}
 .qty{font-family:var(--mono);font-size:11px;color:var(--gold-soft);margin-left:6px}
+/* Seletor de quantidade das tramas: ‹ 2x › à esquerda de cada carta. */
+.trama-row{display:flex;align-items:flex-start;gap:12px;padding:13px 0;border-top:1px solid var(--line)}
+.trama-row:first-child{border-top:0}
+.trama-row.zero .trama-info{opacity:.4}
+.stepper{display:flex;align-items:center;flex:0 0 auto;border:1px solid var(--line);background:var(--panel-2)}
+.stepper button{width:30px;height:32px;background:none;border:0;color:var(--parch);font-size:18px;
+  line-height:1;cursor:pointer;font-family:var(--mono)}
+.stepper button:disabled{color:var(--line);cursor:default}
+.stepper .n{min-width:30px;text-align:center;font-family:var(--mono);font-size:13px;font-weight:600;
+  color:var(--gold-soft)}
+.trama-row.zero .stepper .n{color:var(--muted)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -373,7 +384,9 @@ var PRAZO_MS = 60000, ARMA_MS = 1200, _ultTick = null;
 
 function estadoInicial(){
   var op = {};
-  CHAVES_TRAMA.forEach(function(k){ op[k] = true; });
+  /* tramaOp guarda QUANTAS cópias de cada carta entram (0 a MAX_COPIAS);
+     começa na quantidade do jogo físico. */
+  CHAVES_TRAMA.forEach(function(k){ op[k] = TRAMAS[k].qtd; });
   return {
     tela:'setup', n:6,
     nomes:['','','','','','','','','',''],
@@ -465,16 +478,19 @@ function tamanhoEquipe(){ return MESAS[S.n].missoes[S.missaoIdx]; }
 function contar(lista, valor){
   var c = 0; for (var i = 0; i < lista.length; i++) if (lista[i] === valor) c++; return c;
 }
+var MAX_COPIAS = 4;
 function tramasAtivas(){
-  return CHAVES_TRAMA.filter(function(k){ return S.tramaOp[k]; });
+  return CHAVES_TRAMA.filter(function(k){ return S.tramaOp[k] > 0; });
 }
 function totalTramasAtivas(){
-  var t = 0; tramasAtivas().forEach(function(k){ t += TRAMAS[k].qtd; }); return t;
+  var t = 0; tramasAtivas().forEach(function(k){ t += S.tramaOp[k]; }); return t;
 }
 /* Quantas cartas o manual manda usar por tamanho de mesa: 7 das 15 em mesas de
    5 e 6, o baralho inteiro a partir de 7. Como as cartas físicas trazem impresso
    quais são as 7, e o app não tem essa lista, o corte é feito por sorteio. */
-function limiteTramas(n){ return n <= 6 ? 7 : 15; }
+/* 5–6 jogadores: o manual corta o baralho em 7. A partir de 7 entra tudo o que
+   foi escolhido — com quantidades personalizadas o teto de 15 do jogo físico não vale. */
+function limiteTramas(n){ return n <= 6 ? 7 : Infinity; }
 function tramasEmJogo(){ return Math.min(totalTramasAtivas(), limiteTramas(S.n)); }
 function temCarta(chave){
   for (var p = 0; p < S.maos.length; p++)
@@ -730,7 +746,8 @@ function toggleTramaOn(){ S.tramaOn = !S.tramaOn; render(); }
 function abrirTramas(){ S.tela = 'tramas'; render(); }
 function fecharTramas(){ S.tela = 'setup'; render(); }
 function marcarTramas(v){
-  CHAVES_TRAMA.forEach(function(k){ S.tramaOp[k] = v; });
+  /* true = volta às quantidades do jogo físico; false = zera tudo. */
+  CHAVES_TRAMA.forEach(function(k){ S.tramaOp[k] = v ? TRAMAS[k].qtd : 0; });
   render();
 }
 
@@ -743,7 +760,7 @@ function resumoBaralho(){
   }
   h += '<div class="small muted mt12" style="border-top:1px solid var(--line);padding-top:12px">' +
        'Marcadas: <b>' + sel + '</b> · entram na partida: <b>' + jogo + '</b>' +
-       ' <span class="muted">(limite da mesa de ' + S.n + ': ' + lim + ')</span></div>';
+       (isFinite(lim) ? ' <span class="muted">(limite da mesa de ' + S.n + ': ' + lim + ')</span>' : '') + '</div>';
   if (sel > lim){
     h += '<div class="hint">Sobram ' + (sel - lim) + ' cartas. O app sorteia ' + lim +
          ' entre as marcadas a cada partida, então o baralho muda de uma para a outra.</div>';
@@ -755,20 +772,28 @@ function resumoBaralho(){
 
 function telaTramasEdit(){
   var h = '<div class="card"><div class="eyebrow">Cartas do baralho</div>';
-  h += '<div class="small muted mt8">Marque quais podem entrar. O baralho é montado ' +
-       'na hora de distribuir os papéis.</div>';
+  h += '<div class="small muted mt8">Use as setas para escolher quantas cópias de cada carta ' +
+       'entram, de 0x a ' + MAX_COPIAS + 'x. O baralho é montado na hora de distribuir os papéis.</div>';
   h += '<div class="btn-row mt12">' +
-       '<button class="btn btn--ghost btn--sm" onclick="marcarTramas(true)">Marcar todas</button>' +
-       '<button class="btn btn--ghost btn--sm" onclick="marcarTramas(false)">Limpar</button></div>';
+       '<button class="btn btn--ghost btn--sm" onclick="marcarTramas(true)">Padrão do jogo</button>' +
+       '<button class="btn btn--ghost btn--sm" onclick="marcarTramas(false)">Zerar todas</button></div>';
   h += resumoBaralho();
   h += '</div>';
 
   h += '<div class="card">';
   CHAVES_TRAMA.forEach(function(k){
-    var t = TRAMAS[k];
-    h += '<div class="role-toggle ' + (S.tramaOp[k] ? 'on' : '') + '" onclick="toggleTrama(\'' + k + '\')">' +
-      '<div class="box"></div><div style="min-width:0">' +
-      '<div class="rt-name">' + t.nome + '<span class="qty">' + t.qtd + 'x</span></div>' +
+    var t = TRAMAS[k], q = S.tramaOp[k];
+    h += '<div class="trama-row' + (q ? '' : ' zero') + '">' +
+      '<div class="stepper">' +
+        '<button onclick="mudarCopias(\'' + k + '\',-1)"' + (q <= 0 ? ' disabled' : '') +
+          ' aria-label="Menos">‹</button>' +
+        '<span class="n">' + q + 'x</span>' +
+        '<button onclick="mudarCopias(\'' + k + '\',1)"' + (q >= MAX_COPIAS ? ' disabled' : '') +
+          ' aria-label="Mais">›</button>' +
+      '</div><div class="trama-info" style="min-width:0">' +
+      '<div class="rt-name">' + t.nome +
+        (q !== t.qtd ? '<span class="qty" style="color:var(--muted)">padrão ' + t.qtd + 'x</span>' : '') +
+      '</div>' +
       '<div class="small muted"><span class="pill ' + t.tipo + '" style="margin-right:7px">' +
       t.tipo + '</span>' + t.texto + '</div></div></div>';
   });
@@ -776,7 +801,12 @@ function telaTramasEdit(){
   h += '<button class="btn" onclick="fecharTramas()">Voltar</button>';
   return h;
 }
-function toggleTrama(k){ S.tramaOp[k] = !S.tramaOp[k]; render(); }
+function mudarCopias(k, d){
+  var y = window.scrollY;   /* render() volta ao topo; aqui o usuário está ajustando no meio da lista */
+  S.tramaOp[k] = Math.max(0, Math.min(MAX_COPIAS, S.tramaOp[k] + d));
+  render();
+  window.scrollTo(0, y);
+}
 
 function distribuir(){
   var lista = S.comandanteOn ? ['comandante'] : [];
@@ -799,7 +829,7 @@ function distribuir(){
   var baralho = [];
   if (S.tramaOn){
     tramasAtivas().forEach(function(k){
-      for (var q = 0; q < TRAMAS[k].qtd; q++) baralho.push(k);
+      for (var q = 0; q < S.tramaOp[k]; q++) baralho.push(k);
     });
   }
   /* Embaralha ANTES de cortar: as cartas que ficam de fora são sorteadas, não as
@@ -1650,7 +1680,7 @@ function telaFim(){
 }
 
 function guardarConfig(){
-  return {n:S.n, tramaOn:S.tramaOn, tramaOp:S.tramaOp, caca:S.caca,
+  return {n:S.n, tramaOn:S.tramaOn, tramaOp:Object.assign({}, S.tramaOp), caca:S.caca,
           comandanteOn:S.comandanteOn, modoHacker:S.modoHacker, nomes:S.nomes.slice()};
 }
 function aplicarConfig(cfg){

@@ -1,5 +1,5 @@
 /* Troque a versão a cada atualização do index.html para os celulares baixarem a nova. */
-const VERSAO = 'resistencia-v5';
+const VERSAO = 'resistencia-v6';
 const ARQUIVOS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
