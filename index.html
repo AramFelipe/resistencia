@@ -1899,7 +1899,15 @@ setInterval(function(){
 /* Service worker: guarda o jogo no aparelho para abrir sem internet.
    Só existe fora do Apps Script; lá o registro falha em silêncio. */
 if ('serviceWorker' in navigator && location.protocol === 'https:'){
-  navigator.serviceWorker.register('sw.js').catch(function(){});
+  /* Quando uma versão nova do service worker assume, recarrega uma vez para a
+     tela já mostrar o app atualizado (sem isso só apareceria na abertura seguinte). */
+  var _tinhaControle = !!navigator.serviceWorker.controller, _recarregou = false;
+  navigator.serviceWorker.addEventListener('controllerchange', function(){
+    if (!_tinhaControle || _recarregou) return;
+    _recarregou = true; location.reload();
+  });
+  navigator.serviceWorker.register('sw.js', {updateViaCache:'none'})
+    .then(function(r){ r.update(); }).catch(function(){});
 }
 S = estadoInicial();
 salvarAjustes();
