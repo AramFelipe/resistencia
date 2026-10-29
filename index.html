@@ -1,0 +1,1758 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Resistência">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0A0D11">
+<title>A Resistência</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Nomes preservados de propósito: o JS gera estilos inline usando var(--azure),
+     var(--gold-soft) etc. Trocar só os VALORES retema o app inteiro sem tocar
+     numa linha de lógica. */
+  --ink:#0A0D11; --panel:#11161C; --panel-2:#171E26; --line:#28323E;
+  --parch:#DCE3EB; --muted:#6F7C8A;
+  --gold:#B72435; --gold-soft:#E2495E;          /* acento primário: carmim */
+  --azure:#3FB6D4; --blood:#B72435; --danger:#E2495E;
+  --radius:0px;
+  --shield:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+  --notch:polygon(14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%,0 14px);
+  --notch-sm:polygon(9px 0,100% 0,100% calc(100% - 9px),calc(100% - 9px) 100%,0 100%,0 9px);
+  --disp:'Chakra Petch',system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:
+    linear-gradient(rgba(63,182,212,.028) 1px,transparent 1px) 0 0/100% 3px,
+    radial-gradient(90% 55% at 50% -8%, rgba(183,36,53,.16) 0%, rgba(183,36,53,0) 60%),
+    var(--ink);
+  color:var(--parch);font-family:var(--disp);
+  font-size:16px;line-height:1.5;min-height:100vh;-webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{font-family:var(--disp);font-weight:700;letter-spacing:.01em;margin:0}
+.wrap{max-width:520px;margin:0 auto;padding:18px 16px 40px}
+/* Instalado como app, a página ocupa a tela toda: afasta o conteúdo da barra de status. */
+body{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.eyebrow{font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--gold-soft)}
+.eyebrow::before{content:'// ';opacity:.55}
+.muted{color:var(--muted)}
+.small{font-size:13.5px}
+.center{text-align:center}
+.mt8{margin-top:8px}.mt12{margin-top:12px}.mt16{margin-top:16px}.mt24{margin-top:24px}
+
+.brand{display:flex;align-items:center;gap:11px;justify-content:center;padding:8px 0 20px}
+.brand .crest{width:26px;height:28px;clip-path:var(--shield);
+  background:linear-gradient(150deg,var(--gold-soft),var(--gold));flex:0 0 auto}
+.brand h1{font-size:19px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.brand span{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.24em;
+  text-transform:uppercase;color:var(--muted);font-weight:500;margin-top:2px}
+
+.card{background:var(--panel);border:1px solid var(--line);clip-path:var(--notch);
+  padding:18px;margin-bottom:14px;position:relative}
+.card::before{content:'';position:absolute;left:0;top:0;width:3px;height:26px;background:var(--gold)}
+.card--tight{padding:14px}
+
+button{font-family:inherit;font-size:16px;cursor:pointer;border:0}
+.btn{display:block;width:100%;padding:15px 16px;font-family:var(--disp);font-weight:700;
+  letter-spacing:.1em;text-transform:uppercase;font-size:14.5px;clip-path:var(--notch-sm);
+  background:linear-gradient(180deg,var(--gold-soft),var(--gold));color:#fff;transition:filter .12s}
+.btn:active{filter:brightness(1.18)}
+.btn[disabled]{opacity:.3;cursor:not-allowed}
+/* Escondido até a pessoa ter mesmo olhado o papel. Não dá para re-renderizar
+   na hora da revelação: refazer a tela com o dedo apoiado fecharia o selo no
+   meio da leitura, então o botão já vem no HTML e só troca de classe. */
+.btn.oculto{display:none}
+.btn--ghost{background:var(--panel-2);border:1px solid var(--line);color:var(--parch)}
+.btn--azure{background:linear-gradient(180deg,#54CBE8,var(--azure));color:#04222B}
+.btn--blood{background:linear-gradient(180deg,var(--gold-soft),var(--gold));color:#fff}
+.btn--sm{padding:12px 14px;font-size:12.5px}
+.btn-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+.count-row{display:grid;grid-template-columns:repeat(6,1fr);gap:7px}
+.count{padding:12px 0;background:var(--panel-2);border:1px solid transparent;clip-path:var(--notch-sm);
+  color:var(--muted);font-family:var(--mono);font-weight:600;font-size:15px}
+.count.on{background:rgba(183,36,53,.16);border-color:var(--gold);color:var(--gold-soft)}
+
+.names{display:grid;gap:9px;margin-top:14px}
+.name-line{display:flex;align-items:center;gap:10px}
+.name-line .num{font-family:var(--mono);font-size:11px;color:var(--muted);
+  width:22px;text-align:right;flex:0 0 auto}
+input[type=text]{width:100%;padding:12px 13px;border:1px solid var(--line);clip-path:var(--notch-sm);
+  background:#0D1218;color:var(--parch);font-family:var(--disp);font-size:16px}
+input[type=text]:focus{outline:none;border-color:var(--gold);background:#101820}
+
+.role-toggle{display:flex;align-items:flex-start;gap:12px;padding:13px 0;border-top:1px solid var(--line)}
+.role-toggle:first-of-type{border-top:0}
+.role-toggle .box{width:20px;height:20px;border:1px solid var(--line);
+  background:#0D1218;flex:0 0 auto;margin-top:3px;position:relative}
+.role-toggle.on .box{background:var(--gold);border-color:var(--gold)}
+.role-toggle.on .box::after{content:'';position:absolute;left:6px;top:2px;width:6px;height:11px;
+  border:solid #fff;border-width:0 2px 2px 0;transform:rotate(42deg)}
+.role-toggle.off{opacity:.35;pointer-events:none}
+.role-toggle .rt-name{font-weight:600;font-size:15px;letter-spacing:.02em}
+.side-bem{color:var(--azure)}
+.side-mal{color:var(--danger)}
+
+.roster{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;padding-top:14px;
+  border-top:1px solid var(--line)}
+.tag{font-family:var(--mono);font-size:11px;padding:5px 9px;background:var(--panel-2);
+  color:var(--muted);letter-spacing:.04em}
+.tag.bem{color:#8FD9EA;background:rgba(63,182,212,.12);box-shadow:inset 2px 0 0 var(--azure)}
+.tag.mal{color:#F0919E;background:rgba(183,36,53,.15);box-shadow:inset 2px 0 0 var(--gold)}
+
+.seal-card{position:relative;min-height:340px;border:1px solid var(--line);clip-path:var(--notch);
+  overflow:hidden;background:
+    linear-gradient(rgba(63,182,212,.03) 1px,transparent 1px) 0 0/100% 3px, #0D1218;
+  touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.seal-face,.role-face{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;padding:22px;text-align:center;transition:opacity .18s ease}
+.role-face{opacity:0;pointer-events:none;justify-content:flex-start;padding-top:30px;overflow-y:auto}
+.seal-card.is-open .seal-face{opacity:0}
+.seal-card.is-open .role-face{opacity:1}
+.wax{width:96px;height:96px;clip-path:var(--shield);
+  background:linear-gradient(150deg,var(--gold-soft),#7E1523);
+  display:grid;place-items:center;font-family:var(--disp);font-size:34px;font-weight:700;color:#fff}
+.hold-hint{margin-top:20px;font-family:var(--mono);font-size:10.5px;font-weight:600;
+  letter-spacing:.22em;text-transform:uppercase;color:var(--gold-soft)}
+.seal-card:not(.is-open) .hold-hint{animation:breathe 2.4s ease-in-out infinite}
+@keyframes breathe{0%,100%{opacity:.5}50%{opacity:1}}
+.role-name{font-family:var(--disp);font-size:29px;font-weight:700;line-height:1.12;
+  letter-spacing:.03em;text-transform:uppercase}
+.role-side{margin-top:8px;font-family:var(--mono);font-size:10px;letter-spacing:.22em;
+  text-transform:uppercase;font-weight:600}
+.role-desc{margin-top:14px;font-size:14.5px;color:#AEB9C5;max-width:34ch}
+.know{margin-top:16px;padding-top:14px;border-top:1px solid var(--line);width:100%;max-width:34ch}
+.know-label{font-family:var(--mono);font-size:10px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--muted)}
+.know-list{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;margin-top:9px}
+.know-list .tag{font-family:var(--disp);font-size:13.5px;padding:7px 12px;
+  color:var(--parch);background:var(--panel-2)}
+.know-note{margin-top:11px;font-family:var(--mono);font-size:12px;color:var(--gold-soft)}
+/* O papel entre parênteses fica numa linha só com o nome, mas em tom e corpo
+   diferentes: o nome é o que se procura na mesa, o papel é o que se lê depois. */
+.know-list .tag .kr{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.06em;
+  margin-left:6px;color:var(--muted)}
+/* Telas sob selo são unicolores: azul ou vermelho refletem em óculos e
+   denunciam a facção para quem está do lado. O que diferencia é só o texto. */
+.role-side{color:var(--parch)}
+.btn--selo{background:var(--panel-2);border:1px solid var(--line);color:var(--parch)}
+/* Cores de facção nas telas secretas: só valem com body.cores (ajuste opcional).
+   As classes seg-* ficam sempre no HTML; sem body.cores elas não pintam nada. */
+body.cores .seg-bem{color:var(--azure)}
+body.cores .seg-mal{color:var(--danger)}
+body.cores .btn--selo.seg-bem{background:linear-gradient(180deg,#54CBE8,var(--azure));color:#04222B;border-color:transparent}
+body.cores .btn--selo.seg-mal{background:linear-gradient(180deg,var(--gold-soft),var(--gold));color:#fff;border-color:transparent}
+body.cores .know-list .tag .kr.experiente{color:var(--gold-soft)}
+body.cores .know-list .tag .kr.iniciante{color:#8FD9EA}
+
+/* Botão de ajustes: canto superior direito, respeitando o entalhe do celular. */
+.gear{position:fixed;top:calc(10px + env(safe-area-inset-top,0px));right:12px;z-index:40;
+  width:40px;height:40px;display:grid;place-items:center;background:var(--panel-2);
+  border:1px solid var(--line);color:var(--muted);font-size:19px;cursor:pointer;border-radius:50%}
+.gear:active{color:var(--parch)}
+body.segredo .gear{display:none}
+.ajustes-fundo{position:fixed;inset:0;z-index:50;background:rgba(5,7,10,.78);
+  display:flex;align-items:flex-end;justify-content:center;padding:16px}
+.ajustes{width:100%;max-width:520px;background:var(--panel);border:1px solid var(--line);
+  padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px))}
+.btn--kill{background:var(--panel-2);border:1px solid rgba(226,73,94,.45);color:#F0919E;margin-top:22px}
+
+.track{display:grid;grid-template-columns:repeat(5,1fr);gap:9px}
+/* O padding empurra só o escudo (fluxo normal); o anel é absoluto e ignora ele.
+   Por isso os dois precisam partir da mesma origem, senão sobra borda em cima. */
+.sh-slot{position:relative;padding-top:3px}
+/* Anel neutro de propósito: em carmim ele se confundiria com o escudo de
+   missão sabotada e os dois juntos pareceriam um hexágono duplicado. */
+/* O anel precisa seguir a MESMA proporção do escudo. Ancorá-lo em bottom faria
+   ele esticar até o fim da .sh-slot, que ainda contém a legenda "2 falhas" —
+   era o que deixava o hexágono deformado e transbordando. */
+.sh-ring{position:absolute;left:-3px;right:-3px;top:-3px;bottom:auto;aspect-ratio:1/1.1;
+  clip-path:var(--shield);background:var(--parch);opacity:0}
+.sh-ring{top:0}
+.sh-slot.now .sh-ring{opacity:.92}
+.sh{position:relative;aspect-ratio:1/1.1;clip-path:var(--shield);background:var(--panel-2);
+  display:grid;place-items:center}
+.sh b{font-family:var(--mono);font-size:15px;font-weight:600;color:var(--muted)}
+.sh-slot.now .sh b{color:var(--gold-soft)}
+.sh-slot.ok .sh{background:linear-gradient(170deg,#54CBE8,#2A8CA6)}
+.sh-slot.no .sh{background:linear-gradient(170deg,var(--gold-soft),#7E1523)}
+.sh-slot.ok .sh b{color:#04222B}
+.sh-slot.no .sh b{color:#fff}
+.sh-note{display:block;text-align:center;font-family:var(--mono);font-size:9px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted);margin-top:10px;height:12px}
+.sh-slot.two .sh-note{color:var(--gold-soft)}
+.votes{display:flex;align-items:center;gap:7px;justify-content:center;margin-top:16px}
+.dot{width:8px;height:8px;background:var(--panel-2);border:1px solid var(--line);
+  transform:rotate(45deg)}
+.dot.used{background:var(--gold);border-color:var(--gold)}
+.dot.last{box-shadow:0 0 0 3px rgba(183,36,53,.28)}
+
+.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:14px}
+.pbtn{padding:13px 12px;background:var(--panel-2);border:1px solid transparent;clip-path:var(--notch-sm);
+  color:var(--parch);text-align:left;font-size:15px;font-weight:500;display:flex;align-items:center;
+  gap:8px;line-height:1.25;word-break:break-word;min-width:0}
+.pbtn .crown{font-size:11px;color:var(--gold-soft)}
+.pbtn.sel{border-color:var(--gold);background:rgba(183,36,53,.16);font-weight:700}
+.pbtn[disabled]{opacity:.38}
+
+.verdict{font-family:var(--disp);font-size:31px;font-weight:700;line-height:1.1;
+  letter-spacing:.04em;text-transform:uppercase}
+.result-big{font-family:var(--disp);font-size:46px;font-weight:700;line-height:1;
+  letter-spacing:.05em}
+.cron-wrap{display:flex;align-items:baseline;gap:10px;margin-top:14px}
+.cron-label{font-family:var(--mono);font-size:10px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--muted)}
+.cron{font-family:var(--mono);font-size:26px;font-weight:600;
+  font-variant-numeric:tabular-nums;color:var(--muted);transition:color .3s}
+.cron-reset{margin-left:auto;background:none;border:0;color:var(--muted);
+  font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  text-decoration:underline;cursor:pointer;padding:4px}
+.reveal-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:11px 0;
+  border-top:1px solid var(--line);font-size:15px}
+.reveal-row:first-of-type{border-top:0}
+.reveal-row .r{font-family:var(--mono);font-size:12.5px;letter-spacing:.06em;text-transform:uppercase}
+.rule{margin-top:18px;padding-top:14px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+
+/* ---------- cartas de trama ---------- */
+.plot{border:1px solid var(--line);clip-path:var(--notch-sm);padding:14px;background:#0D1218}
+.plot-head{display:flex;align-items:center;gap:9px}
+.plot-name{font-family:var(--disp);font-size:17px;font-weight:700;line-height:1.2;
+  letter-spacing:.02em;text-transform:uppercase}
+.pill{font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.14em;
+  text-transform:uppercase;padding:4px 8px;flex:0 0 auto}
+.pill.imediata{background:rgba(183,36,53,.18);color:var(--gold-soft)}
+.pill.guardada{background:rgba(63,182,212,.16);color:#8FD9EA}
+.pill.permanente{background:rgba(226,73,94,.16);color:#F0919E}
+.plot-text{font-size:14px;color:#AEB9C5;margin-top:10px}
+
+.holder{padding:11px 0;border-top:1px solid var(--line)}
+.holder:first-of-type{border-top:0}
+.holder-name{font-weight:600;font-size:14.5px}
+.chip-row{display:flex;flex-wrap:wrap;gap:7px;margin-top:7px}
+.chip{display:flex;align-items:center;gap:7px;background:var(--panel-2);border:1px solid var(--line);
+  padding:5px 6px 5px 11px;font-size:13px}
+.chip.perm{border-color:rgba(226,73,94,.5)}
+.chip button{background:var(--gold);color:#fff;font-family:var(--mono);font-size:10px;font-weight:600;
+  padding:5px 10px;letter-spacing:.1em;text-transform:uppercase}
+.chip .lock{font-family:var(--mono);font-size:9.5px;color:var(--muted);letter-spacing:.1em;
+  text-transform:uppercase;padding:4px 8px}
+.hint{background:rgba(183,36,53,.09);border:1px solid rgba(183,36,53,.32);
+  border-left:3px solid var(--gold);padding:11px 13px;font-size:13.5px;
+  color:#F0919E;margin-top:12px}
+.deck-count{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.12em;
+  text-transform:uppercase}
+.qty{font-family:var(--mono);font-size:11px;color:var(--gold-soft);margin-left:6px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<button class="gear" onclick="abrirAjustes()" aria-label="Ajustes">⚙</button>
+<div id="ajustesRaiz"></div>
+<div class="wrap">
+  <div class="brand">
+    <div class="crest"></div>
+    <h1>A Resistência<span>Comandante &amp; Cartas de Trama</span></h1>
+  </div>
+  <div id="app"></div>
+</div>
+<script>
+/* ============================================================
+   PAPÉIS — apenas três
+   ============================================================ */
+var PAPEIS = {
+  comandante: {nome:'Comandante',  lado:'bem',
+    desc:'Você conhece os impostores. Mas a Resistência só vence se você não for descoberto: guie a mesa sem se entregar.'},
+  resistencia:{nome:'Resistência', lado:'bem',
+    desc:'Você não tem informação nenhuma. Só a lógica dos votos e o comportamento da mesa.'},
+  impostor:   {nome:'Impostor',    lado:'mal',
+    desc:'Sabote as missões e proteja seus aliados. Vocês se conhecem — a mesa, não.'},
+  experiente: {nome:'Hacker Experiente', lado:'mal',
+    desc:'Você enxerga a operação inteira: conhece todos os hackers, inclusive o Iniciante, ' +
+         'que não conhece ninguém. Cuidado — o Comandante conhece você.'},
+  iniciante:  {nome:'Hacker Iniciante',  lado:'mal',
+    desc:'Você sabota, mas está sozinho: não sabe quem são seus aliados e eles não contam com ' +
+         'você. Em compensação, o Comandante não faz ideia de que você existe.'}
+};
+
+/* Rótulo curto para o parêntese ao lado do nome: "Hacker" já está implícito
+   na lista, e o nome inteiro estourava a tag em celular estreito. */
+var ROTULO_CURTO = {experiente:'Experiente', iniciante:'Iniciante', impostor:'Impostor'};
+
+var MESAS = {
+  5: {bem:3, mal:2, missoes:[2,3,2,3,3]},
+  6: {bem:4, mal:2, missoes:[2,3,4,3,4]},
+  7: {bem:4, mal:3, missoes:[2,3,3,4,4]},
+  8: {bem:5, mal:3, missoes:[3,4,4,5,5]},
+  9: {bem:6, mal:3, missoes:[3,4,4,5,5]},
+  10:{bem:6, mal:4, missoes:[3,4,4,5,5]}
+};
+
+/* ============================================================
+   CARTAS DE TRAMA  (expansão "The Plot Thickens", 15 cartas)
+   tipo: imediata (★) | guardada (1) | permanente (□)
+   ============================================================ */
+var TRAMAS = {
+  ouvido:    {nome:'Conversa Ouvida', tipo:'imediata', qtd:2,
+    texto:'Quem recebe deve olhar a carta de lealdade de um jogador sentado ao seu lado.'},
+  confianca: {nome:'Estabelecer Confiança', tipo:'imediata', qtd:1,
+    texto:'O líder deve passar a própria carta de lealdade para qualquer outro jogador examinar.'},
+  abrir:     {nome:'Abrir o Jogo', tipo:'imediata', qtd:1,
+    texto:'Quem recebe deve passar a própria carta de lealdade para qualquer outro jogador examinar — inclusive o líder.'},
+  semconf:   {nome:'Sem Confiança', tipo:'guardada', qtd:3,
+    texto:'Derruba uma equipe já aprovada. O uso conta como um voto de rejeição.'},
+  olho:      {nome:'De Olho em Você', tipo:'guardada', qtd:2,
+    texto:'Permite examinar uma carta de missão já jogada. Não precisa ser anunciada antes e não altera a carta. Só um jogador pode checar a carta de cada pessoa por rodada.'},
+  liderforte:{nome:'Líder Forte', tipo:'guardada', qtd:2,
+    texto:'Quem tem a carta assume a liderança. Deve ser declarada antes do líder agir. Outro Líder Forte só pode ser jogado depois de uma votação.'},
+  holofote:  {nome:'Sob os Holofotes', tipo:'guardada', qtd:1,
+    texto:'Obriga um jogador a jogar a carta de missão virada para cima. Deve ser declarada antes de qualquer um da equipe escolher a carta.'},
+  responsa:  {nome:'Assumir a Responsabilidade', tipo:'guardada', qtd:1,
+    texto:'Quem recebe deve tomar uma carta de trama de qualquer outro jogador.'},
+  opiniao:   {nome:'Formador de Opinião', tipo:'permanente', qtd:2,
+    texto:'Quem recebe passa a revelar o voto antes de todos os outros, até o fim da partida. Se duas estiverem em jogo, esses jogadores revelam ao mesmo tempo.'}
+};
+var CHAVES_TRAMA = ['ouvido','confianca','abrir','semconf','olho','liderforte','holofote','responsa','opiniao'];
+
+/* Tramas cujo efeito é "fulano olha a carta de sicrano". Antes eram resolvidas
+   na mesa passando cartas físicas; agora o app faz a revelação sob selo, o que
+   evita que a carta fique exposta na mão de alguém. Cada entrada diz QUEM olha
+   e O QUE é olhado. */
+var EXAME_TRAMA = {
+  ouvido:   {o_que:'papel', rotulo:'Quem <b>%R</b> vai examinar',
+             ajuda:'Só quem está sentado ao lado.'},
+  confianca:{o_que:'papel', rotulo:'Quem vai examinar a carta de <b>%L</b>',
+             ajuda:'O líder mostra o próprio papel a quem escolher.'},
+  abrir:    {o_que:'papel', rotulo:'Quem vai examinar a carta de <b>%R</b>',
+             ajuda:'Qualquer jogador, inclusive o líder.'}
+};
+
+/* Quem olha e quem é olhado mudam conforme a carta. */
+function paresDoExame(key, alvo){
+  var pa = S.sorteioPara;
+  if (key === 'ouvido')    return {quem:pa,    alvo:alvo};
+  if (key === 'confianca') return {quem:alvo,  alvo:S.liderIdx};
+  if (key === 'abrir')     return {quem:alvo,  alvo:pa};
+  return null;
+}
+
+function candidatosExame(key){
+  var pa = S.sorteioPara, lista = [], i;
+  if (key === 'ouvido'){
+    /* "um jogador sentado ao seu lado": os dois vizinhos na roda. */
+    var esq = (pa - 1 + S.n) % S.n, dir = (pa + 1) % S.n;
+    return esq === dir ? [esq] : [esq, dir];
+  }
+  for (i = 0; i < S.n; i++){
+    if (key === 'confianca' && i === S.liderIdx) continue;
+    if (key === 'abrir' && i === pa) continue;
+    lista.push(i);
+  }
+  return lista;
+}
+
+function falhasNecessarias(n, idxMissao){ return (idxMissao === 3 && n >= 7) ? 2 : 1; }
+function tramasPorRodada(n){ return n <= 6 ? 1 : (n <= 8 ? 2 : 3); }
+
+/* ============================================================
+   ESTADO
+   ============================================================ */
+var S, idSeq = 0;
+var PRAZO_MS = 60000, ARMA_MS = 1200, _ultTick = null;
+
+function estadoInicial(){
+  var op = {};
+  CHAVES_TRAMA.forEach(function(k){ op[k] = true; });
+  return {
+    tela:'setup', n:6,
+    nomes:['','','','','','','','','',''],
+    tramaOn:true, tramaOp:op, caca:true,
+    jogadores:[], idxRev:0, viuPapel:false,
+    liderIdx:0, missaoIdx:0, resultados:[], rejeicoes:0,
+    equipe:[], idxCarta:0, cartas:[], ultFalhas:0,
+    baralho:[], maos:[], sorteio:[], sorteioIdx:0, sorteioPara:null,
+    usando:null, voltarPara:'proposta',
+    historico:[], voltarHist:'proposta',
+    restante:PRAZO_MS, prazoKey:'', passadas:0, comandanteOn:true,
+    restanteT:PRAZO_MS, prazoKeyT:'', sorteioAlvo:null, modoHacker:'assimetria', cacaAberta:false,
+    exame:null, viuExame:false, armado:false, armadoPara:-1,
+    vencedor:null, motivo:'', apontado:null,
+    cacaAntecipada:false, voltarCaca:'proposta'
+  };
+}
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+var $ = function(id){ return document.getElementById(id); };
+
+function esc(t){
+  return String(t == null ? '' : t).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function embaralhar(arr){
+  var a = arr.slice();
+  for (var i = a.length - 1; i > 0; i--){
+    var j = Math.floor(Math.random() * (i + 1));
+    var t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
+function nomeDe(i){ return S.jogadores[i].nome; }
+function papelDe(i){ return S.jogadores[i].papel; }
+function ehMal(i){ return PAPEIS[papelDe(i)].lado === 'mal'; }
+/* A caça depende de existir um Comandante. Sem ele não há quem apontar, então
+   o toggle da caça fica inerte — checar os dois em todo lugar evitaria isso,
+   mas uma função só garante que nenhum ponto do código esqueça a combinação. */
+function cacaAtiva(){ return S.caca && S.comandanteOn; }
+/* A variante precisa de pelo menos 2 impostores para existir: um Experiente e
+   um Iniciante. Todas as mesas de 5 a 10 têm, mas a checagem deixa a regra
+   explícita em vez de depender da tabela. */
+/* Três modos de hacker:
+     'classico'   → todos os impostores se conhecem
+     'assimetria' → um Experiente, um Iniciante cego, o resto comum
+     'rede'       → um Experiente que conhece todos; todos os outros são Iniciantes
+                    cegos. O Comandante vê os Iniciantes, mas não o Experiente.
+   A rede só existe a partir de 8 jogadores; abaixo disso, quem escolheu a rede
+   cai na assimetria — o modo "difícil" mais próximo — em vez de sumir com a variante. */
+var MIN_REDE = 8;
+function modoHacker(){
+  var m = S.modoHacker;
+  if (m === 'classico' || MESAS[S.n].mal < 2) return 'classico';
+  if (m === 'rede' && S.n < MIN_REDE) return 'assimetria';
+  return m;
+}
+function redeAtiva(){ return modoHacker() === 'rede'; }
+/* "Assimetria" aqui significa: existe pelo menos um hacker cego. Vale para os dois
+   modos não clássicos — é o que liga rótulos de papel e a revelação na caça. */
+function assimetriaAtiva(){ return modoHacker() !== 'classico'; }
+/* A descrição fixa do Comandante promete conhecer os impostores, o que deixa de
+   ser verdade com a assimetria ligada. Trocar aqui evita ter duas versões do
+   texto no PAPEIS e o risco de mexer numa e esquecer a outra. */
+function descDe(papel){
+  if (redeAtiva()){
+    if (papel === 'comandante')
+      return 'Você enxerga os hackers Iniciantes — mas não o Experiente, que conhece todos eles. ' +
+             'E a Resistência só vence se você não for descoberto.';
+    if (papel === 'experiente')
+      return 'Só você conhece a operação: sabe quem são todos os Iniciantes, e nenhum deles sabe ' +
+             'quem você é. O Comandante enxerga os Iniciantes — você, não.';
+    if (papel === 'iniciante')
+      return 'Você sabota às cegas: não conhece nenhum aliado, nem os outros Iniciantes. ' +
+             'O Experiente sabe quem você é — e o Comandante também.';
+  }
+  if (papel === 'comandante' && assimetriaAtiva())
+    return 'Você conhece parte dos hackers — mas não todos: um deles opera fora do seu radar. ' +
+           'E a Resistência só vence se você não for descoberto.';
+  return PAPEIS[papel].desc;
+}
+function acharPapel(p){
+  for (var i = 0; i < S.jogadores.length; i++) if (papelDe(i) === p) return i;
+  return -1;
+}
+function tamanhoEquipe(){ return MESAS[S.n].missoes[S.missaoIdx]; }
+function contar(lista, valor){
+  var c = 0; for (var i = 0; i < lista.length; i++) if (lista[i] === valor) c++; return c;
+}
+function tramasAtivas(){
+  return CHAVES_TRAMA.filter(function(k){ return S.tramaOp[k]; });
+}
+function totalTramasAtivas(){
+  var t = 0; tramasAtivas().forEach(function(k){ t += TRAMAS[k].qtd; }); return t;
+}
+/* Quantas cartas o manual manda usar por tamanho de mesa: 7 das 15 em mesas de
+   5 e 6, o baralho inteiro a partir de 7. Como as cartas físicas trazem impresso
+   quais são as 7, e o app não tem essa lista, o corte é feito por sorteio. */
+function limiteTramas(n){ return n <= 6 ? 7 : 15; }
+function tramasEmJogo(){ return Math.min(totalTramasAtivas(), limiteTramas(S.n)); }
+function temCarta(chave){
+  for (var p = 0; p < S.maos.length; p++)
+    for (var c = 0; c < S.maos[p].length; c++)
+      if (S.maos[p][c].key === chave) return p;
+  return -1;
+}
+function algumaMao(){
+  for (var p = 0; p < S.maos.length; p++) if (S.maos[p].length) return true;
+  return false;
+}
+
+/* ============================================================
+   CONHECIMENTO
+   ============================================================ */
+/* Quem cada papel enxerga. Uma função só, para que a tela de revelação, a caça e
+   qualquer coisa futura leiam da mesma fonte — duplicar essa regra seria o jeito
+   mais fácil de vazar informação sem perceber.
+
+   Com a assimetria ligada:
+     Comandante  → vê todos os impostores MENOS o Iniciante
+     Experiente  → vê todos os impostores (inclusive o Iniciante)
+     Impostor    → vê os outros MENOS o Iniciante
+     Iniciante   → não vê ninguém
+   O Iniciante é, portanto, invisível para a mesa inteira e cego para os aliados.
+
+   Com a rede (8+):
+     Comandante  → vê todos os Iniciantes, MENOS o Experiente
+     Experiente  → vê todos os Iniciantes
+     Iniciante   → não vê ninguém (nem os outros Iniciantes) */
+function vistosPor(i){
+  var papel = papelDe(i), lista = [], k;
+  /* Trava pelo OBSERVADOR antes de olhar os alvos. Sem isto a função devolvia a
+     lista de impostores para qualquer papel — inofensivo hoje, porque conhecimento()
+     separa por papel antes de chamar, mas seria um vazamento pronto para quem
+     reaproveitasse a função (a versão online, por exemplo). */
+  if (papel === 'resistencia' || papel === 'iniciante') return lista;
+  for (k = 0; k < S.jogadores.length; k++){
+    if (k === i) continue;
+    if (!ehMal(k)) continue;
+    if (modoHacker() === 'assimetria' && papelDe(k) === 'iniciante' && papel !== 'experiente') continue;
+    /* Na rede o Comandante vê os Iniciantes e só o Experiente fica de fora. */
+    if (redeAtiva() && papel === 'comandante' && papelDe(k) === 'experiente') continue;
+    lista.push(k);
+  }
+  return lista;
+}
+
+function conhecimento(i){
+  var papel = papelDe(i), r = {label:'', nomes:[], nota:''}, k;
+
+  if (papel === 'comandante'){
+    r.label = 'Impostores que você identifica';
+    /* Com hacker cego em jogo, o Comandante vê entre parênteses que tipo de hacker
+       é cada um (Experiente, Iniciante, Impostor) — igual ao que o Experiente vê.
+       No modo clássico não há tipos, então o rótulo não aparece. */
+    vistosPor(i).forEach(function(k){
+      r.nomes.push({nome:nomeDe(k), papel:assimetriaAtiva() ? papelDe(k) : null});
+    });
+    r.nomes = embaralhar(r.nomes);
+    if (redeAtiva())
+      r.nota = 'Esses são os Iniciantes — eles não se conhecem. Há um Experiente que você NÃO ' +
+               'enxerga e que conhece todos eles. ' +
+               (cacaAtiva() ? 'E eles podem tentar te assassinar a qualquer momento.' : '');
+    else if (assimetriaAtiva())
+      r.nota = 'Há um hacker a mais que você NÃO enxerga. ' +
+               (cacaAtiva() ? 'E eles podem tentar te assassinar a qualquer momento.' : '');
+    else if (cacaAtiva())
+      r.nota = 'Os impostores podem tentar te assassinar a qualquer momento. Não se entregue.';
+    return r;
+  }
+
+  if (papel === 'iniciante'){
+    r.label = 'Você não conhece ninguém';
+    r.nota = redeAtiva()
+      ? 'Há outros hackers na mesa, mas só o Experiente sabe quem são. Atenção: o Comandante ' +
+        'enxerga você. Sabote sem se expor.'
+      : 'Nem seus aliados sabem quem você é. Sabote sem combinar — e sem estragar o plano deles.';
+    if (redeAtiva() && cacaAtiva())
+      r.nota += ' A qualquer momento os hackers podem tentar assassinar o Comandante.';
+    return r;
+  }
+
+  if (ehMal(i)){
+    r.label = (papel === 'experiente') ? 'Os hackers que você conhece' : 'Seus colegas impostores';
+    /* Com a assimetria cada colega vem com o papel ao lado: o Experiente precisa
+       separar quem é o Iniciante de quem é Impostor comum, e o Impostor comum
+       precisa saber qual dos nomes é o Experiente — é com ele que combina. Sem
+       a assimetria todos são "Impostor" e o rótulo só repetiria a informação. */
+    vistosPor(i).forEach(function(k){
+      r.nomes.push({nome:nomeDe(k), papel:assimetriaAtiva() ? papelDe(k) : null});
+    });
+    r.nomes = embaralhar(r.nomes);
+    if (!r.nomes.length) r.label = 'Você é o único impostor';
+    var notas = [];
+    if (redeAtiva())
+      notas.push('Eles não sabem quem você é nem quem são os outros. O Comandante enxerga todos eles — você, não.');
+    else if (assimetriaAtiva() && papel !== 'experiente')
+      notas.push('Há um Iniciante que ninguém apresenta a você. Ele sabota por conta própria.');
+    if (cacaAtiva())
+      notas.push('A qualquer momento vocês podem tentar assassinar o Comandante. Se errarem, a Resistência vence.');
+    r.nota = notas.join(' ');
+    return r;
+  }
+
+  r.nota = 'Nenhuma informação. Observe os votos.';
+  return r;
+}
+
+/* ============================================================
+   ROTEADOR
+   ============================================================ */
+function render(){
+  var telas = {
+    setup:telaSetup, revelacao:telaRevelacao, trama:telaTrama, usar:telaUsar,
+    proposta:telaProposta, votacao:telaVotacao, missao:telaMissao,
+    apurar:telaApurar, resultado:telaResultado, caca:telaCaca, fim:telaFim,
+    historico:telaHistorico, exame:telaExame, tramas:telaTramasEdit
+  };
+  $('app').innerHTML = telas[S.tela]();
+  /* Nas telas em que o celular está na mão de um só, a engrenagem some: um toque
+     sem querer abriria o painel por cima do selo. */
+  document.body.classList.toggle('segredo',
+    S.tela === 'revelacao' || S.tela === 'exame' || S.tela === 'missao');
+  window.scrollTo(0, 0);
+  if (S.tela === 'revelacao' || S.tela === 'exame') ligarSelo();
+}
+
+/* ------------------------------------------------------------
+   1. SETUP
+   ------------------------------------------------------------ */
+function telaSetup(){
+  var m = MESAS[S.n], h = '';
+
+  h += '<div class="card">';
+  h += '<div class="eyebrow">Quantos à mesa</div><div class="count-row mt12">';
+  [5,6,7,8,9,10].forEach(function(k){
+    h += '<button class="count ' + (S.n === k ? 'on' : '') + '" onclick="setN(' + k + ')">' + k + '</button>';
+  });
+  h += '</div>';
+  h += '<div class="small muted mt12">' +
+       (S.comandanteOn ? '1 Comandante + ' + (m.bem - 1) + ' da Resistência'
+                       : m.bem + ' da Resistência') +
+       ' · ' + m.mal + ' impostores</div>';
+  h += '<div class="names">';
+  for (var i = 0; i < S.n; i++){
+    h += '<div class="name-line"><span class="num">' + (i + 1) + '</span>' +
+         '<input type="text" autocomplete="off" placeholder="Jogador ' + (i + 1) + '" ' +
+         'value="' + esc(S.nomes[i]) + '" oninput="setNome(' + i + ',this.value)"></div>';
+  }
+  h += '</div>';
+  h += '<div class="roster">';
+  if (S.comandanteOn) h += '<span class="tag bem">Comandante</span>';
+  for (var b = (S.comandanteOn ? 1 : 0); b < m.bem; b++)
+    h += '<span class="tag bem">Resistência</span>';
+  if (redeAtiva()){
+    h += '<span class="tag mal">Hacker Experiente</span>';
+    for (var q = 1; q < m.mal; q++) h += '<span class="tag mal">Hacker Iniciante</span>';
+  } else if (assimetriaAtiva()){
+    h += '<span class="tag mal">Hacker Experiente</span><span class="tag mal">Hacker Iniciante</span>';
+    for (var q = 2; q < m.mal; q++) h += '<span class="tag mal">Impostor</span>';
+  } else {
+    for (var q = 0; q < m.mal; q++) h += '<span class="tag mal">Impostor</span>';
+  }
+  h += '</div></div>';
+
+  h += '<div class="card"><div class="eyebrow">Comandante</div><div class="mt12">';
+  h += '<div class="role-toggle ' + (S.comandanteOn ? 'on' : '') + '" onclick="toggleComandante()">' +
+       '<div class="box"></div><div><div class="rt-name">Jogar com o Comandante</div>' +
+       '<div class="small muted">Um jogador da Resistência descobre quem são os impostores. ' +
+       'Desligue para uma partida às cegas: ninguém do lado da Resistência sabe nada.</div></div></div>';
+  /* A caça vive no mesmo cartão porque só faz sentido com o Comandante em jogo.
+     Sem ele, fica apagada e inerte em vez de sumir: a dependência entre as duas
+     opções fica visível, e o cartão não muda de altura ao alternar o de cima. */
+  h += '<div class="role-toggle ' + (S.caca ? 'on' : '') + (S.comandanteOn ? '' : ' off') +
+       '" onclick="toggleCaca()">' +
+       '<div class="box"></div><div><div class="rt-name">Assassinato do Comandante</div>' +
+       '<div class="small muted">A qualquer momento da partida os impostores podem apontar quem ' +
+       'acham que é o Comandante — e, se a Resistência cumprir três missões, têm uma última chance. ' +
+       'Acertou, os impostores vencem. Errou, a Resistência vence.</div></div></div>';
+  h += '</div>';
+  if (!S.comandanteOn){
+    h += '<div class="hint">Sem o Comandante a Resistência joga só na leitura de mesa. ' +
+         'Costuma favorecer os impostores — vale contar com isso.</div>';
+  } else if (!S.caca){
+    h += '<div class="hint">Sem o assassinato, o Comandante é vantagem pura para a Resistência — ' +
+         'ele conhece os impostores e não corre risco nenhum.</div>';
+  }
+  h += '</div>';
+
+  var modo = S.modoHacker, redeOk = S.n >= MIN_REDE;
+  h += '<div class="card"><div class="eyebrow">Hackers</div><div class="mt12">';
+  h += '<div class="role-toggle ' + (modo === 'classico' ? 'on' : '') + '" onclick="setModoHacker(\'classico\')">' +
+       '<div class="box"></div><div><div class="rt-name">Clássico</div>' +
+       '<div class="small muted">Todos os impostores se conhecem e o Comandante vê todos.</div></div></div>';
+  h += '<div class="role-toggle ' + (modo === 'assimetria' ? 'on' : '') + '" onclick="setModoHacker(\'assimetria\')">' +
+       '<div class="box"></div><div><div class="rt-name">Experiente e Iniciante</div>' +
+       '<div class="small muted">Um hacker fica escondido de todos: o Comandante não o vê e os ' +
+       'outros hackers não contam com ele. Só o Experiente sabe quem é.</div></div></div>';
+  /* A rede fica apagada abaixo de 8, como a caça sem Comandante: a opção continua
+     visível, mas o motivo de não poder usar fica explícito no próprio texto. */
+  h += '<div class="role-toggle ' + (modo === 'rede' ? 'on' : '') + (redeOk ? '' : ' off') +
+       '" onclick="setModoHacker(\'rede\')">' +
+       '<div class="box"></div><div><div class="rt-name">Experiente e Iniciantes cegos · 8+</div>' +
+       '<div class="small muted">O Experiente conhece todos os hackers; os Iniciantes não conhecem ' +
+       'ninguém, nem uns aos outros. O Comandante vê os Iniciantes — mas não o Experiente.</div></div></div>';
+  h += '</div>';
+  if (modo === 'rede' && !redeOk){
+    h += '<div class="hint">A rede só vale a partir de 8 jogadores. Nesta mesa a partida usa ' +
+         'Experiente e Iniciante.</div>';
+  } else if (modoHacker() === 'rede'){
+    h += '<div class="hint">Os Iniciantes podem se atropelar — dois fracassos na mesma missão ' +
+         'entregam muita coisa. Cabe ao Experiente costurar o jogo sem se expor, já que é o único ' +
+         'que o Comandante não vê.</div>';
+  } else if (modoHacker() === 'assimetria'){
+    h += '<div class="hint">O Iniciante joga sem coordenação — pode sabotar uma missão que os ' +
+         'colegas queriam deixar passar. Duas sabotagens onde bastava uma entregam muita coisa.</div>';
+  }
+  h += '</div>';
+
+  h += '<div class="card"><div class="eyebrow">Cartas de Trama</div><div class="mt12">';
+  h += '<div class="role-toggle ' + (S.tramaOn ? 'on' : '') + '" onclick="toggleTramaOn()">' +
+       '<div class="box"></div><div><div class="rt-name">Jogar com cartas de trama</div>' +
+       '<div class="small muted">A cada rodada o líder sorteia ' + tramasPorRodada(S.n) +
+       ' carta' + (tramasPorRodada(S.n) > 1 ? 's' : '') + ' e distribui para os outros jogadores.' +
+       '</div></div></div>';
+  h += '</div>';
+
+  if (S.tramaOn){
+    h += resumoBaralho();
+    h += '<button class="btn btn--ghost btn--sm mt12" onclick="abrirTramas()">' +
+         'Editar cartas do baralho</button>';
+  }
+  h += '</div>';
+
+  h += '<button class="btn" onclick="distribuir()">Distribuir os papéis</button>';
+  h += '<div class="rule">Um único celular circula a mesa. O app entrega os papéis em segredo, ' +
+       'registra as cartas de missão, sorteia as tramas e controla a trilha — o resto é conversa.</div>';
+  return h;
+}
+
+function setN(k){ S.n = k; render(); }
+function setNome(i, v){ S.nomes[i] = v; }
+/* O CSS deixa a caça inerte quando não há Comandante, mas pointer-events só
+   barra o dedo — a regra precisa valer na função também. */
+function toggleCaca(){ if (!S.comandanteOn) return; S.caca = !S.caca; render(); }
+function toggleComandante(){ S.comandanteOn = !S.comandanteOn; render(); }
+function setModoHacker(m){
+  if (m === 'rede' && S.n < MIN_REDE) return;  /* pointer-events só barra o dedo */
+  S.modoHacker = m; render();
+}
+function toggleTramaOn(){ S.tramaOn = !S.tramaOn; render(); }
+function abrirTramas(){ S.tela = 'tramas'; render(); }
+function fecharTramas(){ S.tela = 'setup'; render(); }
+function marcarTramas(v){
+  CHAVES_TRAMA.forEach(function(k){ S.tramaOp[k] = v; });
+  render();
+}
+
+/* Resumo compartilhado entre o setup e a tela de edição, para os dois números
+   nunca discordarem. */
+function resumoBaralho(){
+  var sel = totalTramasAtivas(), lim = limiteTramas(S.n), jogo = tramasEmJogo(), h = '';
+  if (!sel){
+    return '<div class="hint">Nenhuma carta marcada: a partida vai rodar sem tramas.</div>';
+  }
+  h += '<div class="small muted mt12" style="border-top:1px solid var(--line);padding-top:12px">' +
+       'Marcadas: <b>' + sel + '</b> · entram na partida: <b>' + jogo + '</b>' +
+       ' <span class="muted">(limite da mesa de ' + S.n + ': ' + lim + ')</span></div>';
+  if (sel > lim){
+    h += '<div class="hint">Sobram ' + (sel - lim) + ' cartas. O app sorteia ' + lim +
+         ' entre as marcadas a cada partida, então o baralho muda de uma para a outra.</div>';
+  }
+  h += '<div class="small muted mt8">Até ' + (tramasPorRodada(S.n) * 5) +
+       ' serão distribuídas ao longo das 5 rodadas.</div>';
+  return h;
+}
+
+function telaTramasEdit(){
+  var h = '<div class="card"><div class="eyebrow">Cartas do baralho</div>';
+  h += '<div class="small muted mt8">Marque quais podem entrar. O baralho é montado ' +
+       'na hora de distribuir os papéis.</div>';
+  h += '<div class="btn-row mt12">' +
+       '<button class="btn btn--ghost btn--sm" onclick="marcarTramas(true)">Marcar todas</button>' +
+       '<button class="btn btn--ghost btn--sm" onclick="marcarTramas(false)">Limpar</button></div>';
+  h += resumoBaralho();
+  h += '</div>';
+
+  h += '<div class="card">';
+  CHAVES_TRAMA.forEach(function(k){
+    var t = TRAMAS[k];
+    h += '<div class="role-toggle ' + (S.tramaOp[k] ? 'on' : '') + '" onclick="toggleTrama(\'' + k + '\')">' +
+      '<div class="box"></div><div style="min-width:0">' +
+      '<div class="rt-name">' + t.nome + '<span class="qty">' + t.qtd + 'x</span></div>' +
+      '<div class="small muted"><span class="pill ' + t.tipo + '" style="margin-right:7px">' +
+      t.tipo + '</span>' + t.texto + '</div></div></div>';
+  });
+  h += '</div>';
+  h += '<button class="btn" onclick="fecharTramas()">Voltar</button>';
+  return h;
+}
+function toggleTrama(k){ S.tramaOp[k] = !S.tramaOp[k]; render(); }
+
+function distribuir(){
+  var lista = S.comandanteOn ? ['comandante'] : [];
+  while (lista.length < MESAS[S.n].bem) lista.push('resistencia');
+  /* Exatamente um Experiente e um Iniciante; qualquer impostor além desses dois
+     é comum e se conhece com os demais normalmente. */
+  if (assimetriaAtiva()){ lista.push('experiente'); lista.push('iniciante'); }
+  /* Na rede não há impostor comum: todo hacker além do Experiente é Iniciante. */
+  var resto = redeAtiva() ? 'iniciante' : 'impostor';
+  while (lista.length < S.n) lista.push(resto);
+  lista = embaralhar(lista);
+
+  S.jogadores = [];
+  S.maos = [];
+  for (var i = 0; i < S.n; i++){
+    S.jogadores.push({nome:(S.nomes[i] || '').trim() || ('Jogador ' + (i + 1)), papel:lista[i]});
+    S.maos.push([]);
+  }
+
+  var baralho = [];
+  if (S.tramaOn){
+    tramasAtivas().forEach(function(k){
+      for (var q = 0; q < TRAMAS[k].qtd; q++) baralho.push(k);
+    });
+  }
+  /* Embaralha ANTES de cortar: as cartas que ficam de fora são sorteadas, não as
+     últimas da lista. Sem isso, marcar mais que o limite faria sempre entrarem
+     as mesmas — a ordem de CHAVES_TRAMA decidiria a partida. */
+  baralho = embaralhar(baralho);
+  var lim = limiteTramas(S.n);
+  if (baralho.length > lim) baralho = baralho.slice(0, lim);
+  S.baralho = baralho;
+
+  S.idxRev = 0; S.viuPapel = false;
+  S.liderIdx = Math.floor(Math.random() * S.n);
+  S.tela = 'revelacao';
+  render();
+}
+
+/* ------------------------------------------------------------
+   2. REVELAÇÃO
+   ------------------------------------------------------------ */
+function telaRevelacao(){
+  var i = S.idxRev, p = PAPEIS[papelDe(i)], c = conhecimento(i), h = '';
+  h += '<div class="center"><div class="eyebrow">Jogador ' + (i + 1) + ' de ' + S.n + '</div>' +
+       '<h2 class="mt8" style="font-size:22px">Passe o celular para<br>' + esc(nomeDe(i)) + '</h2></div>';
+  h += '<div class="seal-card mt16" id="selo">';
+  h += '<div class="seal-face"><div class="wax">' + esc(nomeDe(i).charAt(0).toUpperCase()) + '</div>' +
+       '<div class="hold-hint">Segure para ver seu papel</div>' +
+       '<div class="small muted mt12">Solte para lacrar de novo</div></div>';
+  h += '<div class="role-face">';
+  h += '<div class="role-name">' + p.nome + '</div>';
+  h += '<div class="role-side seg-' + p.lado + '">' +
+       (p.lado === 'bem' ? 'Resistência' : 'Impostor') + '</div>';
+  h += '<div class="role-desc">' + descDe(papelDe(i)) + '</div>';
+  if (c.label || c.nomes.length || c.nota){
+    h += '<div class="know">';
+    if (c.label) h += '<div class="know-label">' + c.label + '</div>';
+    if (c.nomes.length){
+      h += '<div class="know-list">';
+      c.nomes.forEach(function(it){
+        h += '<span class="tag">' + esc(it.nome) +
+             (it.papel ? '<span class="kr ' + it.papel + '">(' + ROTULO_CURTO[it.papel] + ')</span>' : '') +
+             '</span>';
+      });
+      h += '</div>';
+    }
+    if (c.nota) h += '<div class="know-note">' + c.nota + '</div>';
+    h += '</div>';
+  }
+  h += '</div></div>';
+  h += '<button class="btn mt16' + (S.viuPapel ? '' : ' oculto') + '" id="btnProx" ' +
+       'onclick="proxRevelacao()"' + (S.viuPapel ? '' : ' disabled') + '>' +
+       (S.idxRev === S.n - 1 ? 'Começar a partida' : 'Já vi — passar adiante') + '</button>';
+  h += '<div class="rule">Ninguém deve ver a tela de outro jogador. Se o celular passar de mão, ' +
+       'o selo se fecha sozinho.</div>';
+  return h;
+}
+
+function ligarSelo(){
+  var selo = $('selo');
+  if (!selo) return;
+  var abrir = function(ev){
+    ev.preventDefault();
+    selo.classList.add('is-open');
+    var visto = (S.tela === 'exame') ? 'viuExame' : 'viuPapel';
+    if (!S[visto]){
+      S[visto] = true;
+      var bt = $('btnProx');
+      if (bt){ bt.disabled = false; bt.classList.remove('oculto'); }
+    }
+  };
+  var fechar = function(){ selo.classList.remove('is-open'); };
+  selo.addEventListener('pointerdown', abrir);
+  selo.addEventListener('pointerup', fechar);
+  selo.addEventListener('pointercancel', fechar);
+  selo.addEventListener('pointerleave', fechar);
+  selo.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+}
+
+function proxRevelacao(){
+  if (S.idxRev < S.n - 1){ S.idxRev++; S.viuPapel = false; return render(); }
+  abrirRodada();
+}
+
+/* ------------------------------------------------------------
+   TRILHA + PAINEL DE TRAMAS
+   ------------------------------------------------------------ */
+function trilhaHTML(){
+  var m = MESAS[S.n], h = '<div class="card card--tight"><div class="track">';
+  for (var i = 0; i < 5; i++){
+    var cls = 'sh-slot';
+    if (S.resultados[i] === 'sucesso') cls += ' ok';
+    else if (S.resultados[i] === 'falha') cls += ' no';
+    if (i === S.missaoIdx && S.tela !== 'fim' && S.tela !== 'caca') cls += ' now';
+    var duas = falhasNecessarias(S.n, i) === 2;
+    if (duas) cls += ' two';
+    h += '<div class="' + cls + '"><div class="sh-ring"></div><div class="sh"><b>' +
+         m.missoes[i] + '</b></div><span class="sh-note">' + (duas ? '2 falhas' : '') + '</span></div>';
+  }
+  h += '</div><div class="votes">';
+  for (var v = 0; v < 5; v++){
+    h += '<span class="dot ' + (v < S.rejeicoes ? 'used' : '') +
+         (v === S.rejeicoes - 1 ? ' last' : '') + '"></span>';
+  }
+  h += '<span class="small muted" style="margin-left:6px">' + S.rejeicoes + '/5 rejeições</span>';
+  h += '</div>';
+  if (S.historico.length){
+    h += '<button class="btn btn--ghost btn--sm mt12" onclick="abrirHistorico()">' +
+         'Histórico · ' + S.historico.length + ' registro' + (S.historico.length > 1 ? 's' : '') +
+         '</button>';
+  }
+  h += '</div>';
+  return h;
+}
+
+/* Fica na base das telas públicas (trama, proposta, votação, resultado), igual
+   para todo mundo: o app não sabe quem está segurando o celular, e um botão que
+   só aparecesse para hackers entregaria quem são. Nunca entra nas telas
+   secretas (revelação, missão, exame), onde o celular está na mão de um só. */
+function botaoAssassinar(){
+  if (!cacaAtiva()) return '';
+  if (contar(S.resultados, 'sucesso') >= 3 || contar(S.resultados, 'falha') >= 3) return '';
+  return '<button class="btn btn--sm btn--kill" onclick="pedirAssassinato()">Assassinar o Comandante</button>';
+}
+function pedirAssassinato(){
+  S.cacaAntecipada = true; S.cacaAberta = false;
+  S.voltarCaca = S.tela;
+  S.tela = 'caca';
+  render();
+}
+function desistirAssassinato(){
+  S.cacaAntecipada = false; S.cacaAberta = false;
+  S.tela = S.voltarCaca;
+  render();
+}
+
+function abrirHistorico(){ S.voltarHist = S.tela; S.tela = 'historico'; render(); }
+function fecharHistorico(){ S.tela = S.voltarHist; render(); }
+
+function painelTramas(){
+  if (!S.tramaOn || !algumaMao()) return '';
+  var h = '<div class="card"><div class="eyebrow">Cartas de trama em jogo</div>';
+  h += '<div class="mt12">';
+  for (var p = 0; p < S.n; p++){
+    if (!S.maos[p].length) continue;
+    h += '<div class="holder"><div class="holder-name">' + esc(nomeDe(p)) + '</div><div class="chip-row">';
+    S.maos[p].forEach(function(carta, ci){
+      var t = TRAMAS[carta.key], perm = t.tipo === 'permanente';
+      h += '<span class="chip' + (perm ? ' perm' : '') + '">' + t.nome +
+        (perm ? '<span class="lock">sempre</span>'
+              : '<button onclick="pedirUso(' + p + ',' + ci + ')">Usar</button>') + '</span>';
+    });
+    h += '</div></div>';
+  }
+  h += '</div>';
+
+  var dicas = [];
+  if (S.tela === 'votacao' && temCarta('semconf') !== -1)
+    dicas.push('Alguém tem <b>Sem Confiança</b> — pode derrubar a equipe mesmo depois de aprovada.');
+  if (S.tela === 'proposta' && temCarta('liderforte') !== -1)
+    dicas.push('<b>Líder Forte</b> precisa ser declarado antes do líder agir.');
+  if (S.tela === 'votacao' && temCarta('holofote') !== -1)
+    dicas.push('<b>Sob os Holofotes</b> deve ser declarado antes de qualquer carta de missão ser escolhida.');
+  if (S.tela === 'resultado' && temCarta('olho') !== -1)
+    dicas.push('<b>De Olho em Você</b> pode ser usado agora — o app mostra a carta sob selo.');
+  if (dicas.length) h += '<div class="hint">' + dicas.join('<br>') + '</div>';
+  h += '</div>';
+  return h;
+}
+
+/* ------------------------------------------------------------
+   3. SORTEIO DAS TRAMAS (início de rodada)
+   ------------------------------------------------------------ */
+function abrirRodada(){
+  S.equipe = [];
+  S.sorteio = []; S.sorteioIdx = 0; S.sorteioPara = null;
+  var qtd = tramasPorRodada(S.n);
+  if (S.tramaOn && S.baralho.length && S.n > 1){
+    for (var i = 0; i < qtd && S.baralho.length; i++) S.sorteio.push(S.baralho.pop());
+  }
+  S.tela = S.sorteio.length ? 'trama' : 'proposta';
+  render();
+}
+
+function telaTrama(){
+  var key = S.sorteio[S.sorteioIdx], t = TRAMAS[key], h = trilhaHTML();
+  h += '<div class="card">';
+  h += '<div class="eyebrow">Rodada ' + (S.missaoIdx + 1) + ' · Trama ' +
+       (S.sorteioIdx + 1) + ' de ' + S.sorteio.length + '</div>';
+  h += '<div class="plot mt12"><div class="plot-head">' +
+       '<span class="plot-name">' + t.nome + '</span>' +
+       '<span class="pill ' + t.tipo + '">' + t.tipo + '</span></div>' +
+       '<div class="plot-text">' + t.texto + '</div></div>';
+
+  h += blocoCron('Tempo para entregar');
+
+  if (S.sorteioPara === null){
+    h += '<div class="small muted mt16"><b>' + esc(nomeDe(S.liderIdx)) +
+         '</b> sorteou esta carta e entrega para outro jogador — nunca para si.</div>';
+    h += '<div class="pgrid">';
+    for (var i = 0; i < S.n; i++){
+      if (i === S.liderIdx) continue;
+      h += '<button class="pbtn" onclick="entregarTrama(' + i + ')">' + esc(nomeDe(i)) + '</button>';
+    }
+    h += '</div>';
+  } else if (EXAME_TRAMA[key]){
+    var cfg = EXAME_TRAMA[key];
+    h += '<div class="small muted mt16">' +
+         cfg.rotulo.replace('%R', esc(nomeDe(S.sorteioPara))).replace('%L', esc(nomeDe(S.liderIdx))) +
+         '? <span class="muted">' + cfg.ajuda + '</span></div>';
+    h += '<div class="pgrid">';
+    candidatosExame(key).forEach(function(i){
+      h += '<button class="pbtn" onclick="abrirExameTrama(' + i + ')">' + esc(nomeDe(i)) + '</button>';
+    });
+    h += '</div>';
+  } else {
+    h += '<div class="hint mt16">Entregue a <b>' + esc(nomeDe(S.sorteioPara)) + '</b>. ' +
+         (t.tipo === 'imediata' ? 'Resolva o efeito agora, na mesa.'
+          : t.tipo === 'permanente' ? 'Fica valendo até o fim da partida.'
+          : 'Ele guarda a carta até decidir usar.') + '</div>';
+    h += '<button class="btn mt12" onclick="confirmarTrama()">' +
+         (t.tipo === 'imediata' ? 'Efeito resolvido' : 'Continuar') + '</button>';
+  }
+  h += '<div class="small muted mt16">Restam ' + S.baralho.length + ' cartas no baralho.</div>';
+  h += '</div>';
+  h += painelTramas();
+  h += botaoAssassinar();
+  return h;
+}
+
+function entregarTrama(i){ S.sorteioPara = i; render(); }
+
+function abrirExameTrama(alvo){
+  var key = S.sorteio[S.sorteioIdx], par = paresDoExame(key, alvo);
+  S.exame = {quem:par.quem, alvo:par.alvo, tipo:'papel', origem:'trama', key:key};
+  S.viuExame = false;
+  S.tela = 'exame';
+  render();
+}
+
+/* ------------------------------------------------------------
+   EXAME SOB SELO (cartas que mostram algo de outro jogador)
+   ------------------------------------------------------------ */
+function telaExame(){
+  var e = S.exame, h = '';
+  h += '<div class="center"><div class="eyebrow">' + TRAMAS[e.key].nome + '</div>' +
+       '<h2 class="mt8" style="font-size:22px">Passe o celular para<br>' +
+       esc(nomeDe(e.quem)) + '</h2>';
+  h += '<div class="small muted mt12">' +
+       (e.tipo === 'papel' ? 'Carta de lealdade de ' : 'Carta de missão de ') +
+       '<b>' + esc(nomeDe(e.alvo)) + '</b>. Mais ninguém pode ver.</div></div>';
+
+  h += '<div class="seal-card mt16" id="selo">';
+  h += '<div class="seal-face"><div class="wax">' + esc(nomeDe(e.quem).charAt(0).toUpperCase()) +
+       '</div><div class="hold-hint">Segure para ver</div>' +
+       '<div class="small muted mt12">Solte para lacrar de novo</div></div>';
+  h += '<div class="role-face" style="justify-content:center;padding-top:22px">';
+  if (e.tipo === 'papel'){
+    /* Só a FACÇÃO, nunca o papel. Mostrar "Comandante" ou "Hacker Experiente"
+       entregava de graça quem a caça precisa achar — no jogo físico a carta
+       examinada é a de lealdade, que diz apenas de que lado a pessoa está. */
+    var lado = PAPEIS[papelDe(e.alvo)].lado;
+    h += '<div class="role-name seg-' + lado + '">' +
+         (lado === 'bem' ? 'Resistência' : 'Hacker') + '</div>';
+    h += '<div class="role-desc">' + esc(nomeDe(e.alvo)) + ' está do lado ' +
+         (lado === 'bem' ? 'da Resistência' : 'dos hackers') + '. O papel exato ' +
+         'continua secreto.</div>';
+  } else {
+    var falhou = e.carta;
+    h += '<div class="role-name seg-' + (falhou ? 'mal' : 'bem') + '">' +
+         (falhou ? 'Fracasso' : 'Sucesso') + '</div>';
+    h += '<div class="role-desc">Foi a carta que <b>' + esc(nomeDe(e.alvo)) +
+         '</b> jogou nesta missão.</div>';
+  }
+  h += '</div></div>';
+  h += '<button class="btn mt16' + (S.viuExame ? '' : ' oculto') + '" id="btnProx" ' +
+       'onclick="fecharExame()"' + (S.viuExame ? '' : ' disabled') + '>Já vi — continuar</button>';
+  h += '<div class="rule">O selo fecha sozinho quando o dedo sai da tela, então o ' +
+       'celular pode voltar para a mesa sem revelar nada.</div>';
+  return h;
+}
+
+function fecharExame(){
+  var e = S.exame;
+  S.exame = null; S.viuExame = false;
+  if (e.origem === 'trama') return confirmarTrama();
+  return confirmarUso();
+}
+
+function confirmarTrama(){
+  var key = S.sorteio[S.sorteioIdx], t = TRAMAS[key];
+  S.sorteioAlvo = null;
+  if (t.tipo !== 'imediata'){
+    S.maos[S.sorteioPara].push({id:++idSeq, key:key});
+  }
+  S.sorteioPara = null;
+  S.sorteioIdx++;
+  S.tela = (S.sorteioIdx < S.sorteio.length) ? 'trama' : 'proposta';
+  render();
+}
+
+/* ------------------------------------------------------------
+   4. USO DE UMA CARTA GUARDADA
+   ------------------------------------------------------------ */
+function pedirUso(p, c){
+  S.usando = {p:p, c:c, alvo:null};
+  S.voltarPara = S.tela;
+  S.tela = 'usar';
+  render();
+}
+
+function telaUsar(){
+  var u = S.usando, carta = S.maos[u.p][u.c], t = TRAMAS[carta.key], h = '';
+  h += '<div class="card">';
+  h += '<div class="eyebrow">' + esc(nomeDe(u.p)) + ' usa</div>';
+  h += '<div class="plot mt12"><div class="plot-head">' +
+       '<span class="plot-name">' + t.nome + '</span>' +
+       '<span class="pill ' + t.tipo + '">' + t.tipo + '</span></div>' +
+       '<div class="plot-text">' + t.texto + '</div></div>';
+
+  if (carta.key === 'responsa'){
+    var achou = false;
+    h += '<div class="small muted mt16">Escolha a carta que ' + esc(nomeDe(u.p)) + ' vai tomar:</div>';
+    h += '<div class="mt12">';
+    for (var p = 0; p < S.n; p++){
+      if (p === u.p || !S.maos[p].length) continue;
+      var chips = '';
+      for (var c = 0; c < S.maos[p].length; c++){
+        if (p === u.p && c === u.c) continue;
+        achou = true;
+        chips += '<span class="chip">' + TRAMAS[S.maos[p][c].key].nome +
+          '<button onclick="tomarCarta(' + p + ',' + c + ')">Tomar</button></span>';
+      }
+      if (chips) h += '<div class="holder"><div class="holder-name">' + esc(nomeDe(p)) +
+        '</div><div class="chip-row">' + chips + '</div></div>';
+    }
+    h += '</div>';
+    if (!achou) h += '<div class="hint">Ninguém mais tem carta de trama para ser tomada. ' +
+      'A carta fica na mão até que alguém tenha.</div>';
+  } else if (carta.key === 'olho'){
+    /* A carta olha uma carta de missão JÁ JOGADA — se ainda não houve nenhuma
+       nesta rodada não há o que examinar, e a carta continua na mão. */
+    if (!S.cartas.length){
+      h += '<div class="hint mt16">Nenhuma carta de missão foi jogada nesta rodada ainda. ' +
+           'A carta fica na mão até haver o que examinar.</div>';
+    } else {
+      h += '<div class="small muted mt16">Qual carta ' + esc(nomeDe(u.p)) + ' vai examinar?</div>';
+      h += '<div class="pgrid">';
+      S.equipe.forEach(function(jog, k){
+        if (k >= S.cartas.length) return;
+        h += '<button class="pbtn" onclick="abrirExameCarta(' + k + ')">' +
+             esc(nomeDe(jog)) + '</button>';
+      });
+      h += '</div>';
+    }
+  } else if (carta.key === 'liderforte'){
+    h += '<div class="hint mt16">' + esc(nomeDe(u.p)) + ' assume a liderança da rodada. ' +
+      'A proposta de equipe recomeça.</div>';
+    h += '<button class="btn mt12" onclick="confirmarUso()">Assumir a liderança</button>';
+  } else {
+    h += '<div class="hint mt16">Resolva o efeito na mesa e confirme para descartar a carta.</div>';
+    h += '<button class="btn mt12" onclick="confirmarUso()">Confirmar uso</button>';
+  }
+  h += '<button class="btn btn--ghost btn--sm mt12" onclick="cancelarUso()">Voltar sem usar</button>';
+  h += '</div>';
+  return h;
+}
+
+function cancelarUso(){ S.usando = null; S.tela = S.voltarPara; render(); }
+
+function abrirExameCarta(k){
+  var u = S.usando, carta = S.maos[u.p][u.c];
+  S.exame = {quem:u.p, alvo:S.equipe[k], tipo:'carta', origem:'usar',
+             key:carta.key, carta:S.cartas[k]};
+  S.viuExame = false;
+  S.tela = 'exame';
+  render();
+}
+
+function tomarCarta(p, c){
+  var u = S.usando;
+  var movida = S.maos[p].splice(c, 1)[0];
+  S.maos[u.p].splice(u.c, 1);
+  S.maos[u.p].push(movida);
+  S.usando = null;
+  S.tela = S.voltarPara;
+  render();
+}
+
+function confirmarUso(){
+  var u = S.usando, carta = S.maos[u.p][u.c];
+  S.maos[u.p].splice(u.c, 1);
+  S.usando = null;
+  if (carta.key === 'liderforte'){
+    S.liderIdx = u.p;
+    S.equipe = [];
+    // Líder Forte é declarado antes do líder agir: se o sorteio de tramas
+    // estava em andamento, as cartas ainda não entregues voltam ao baralho
+    // e quem sorteia é o novo líder.
+    if (S.voltarPara === 'trama'){
+      for (var s = S.sorteioIdx; s < S.sorteio.length; s++) S.baralho.push(S.sorteio[s]);
+      S.baralho = embaralhar(S.baralho);
+      S.sorteio = []; S.sorteioIdx = 0; S.sorteioPara = null;
+      return abrirRodada();
+    }
+    S.tela = 'proposta';
+  } else {
+    S.tela = S.voltarPara;
+  }
+  render();
+}
+
+/* ------------------------------------------------------------
+   5. PROPOSTA
+   ------------------------------------------------------------ */
+/* O relógio vive no ESTADO, não no DOM: render() recria a tela inteira a cada
+   toque em toggleEquipe(), então um elemento com contagem própria morreria a
+   cada jogador selecionado. O intervalo global apenas pinta o texto. */
+function chavePrazo(){
+  return S.missaoIdx + '|' + S.liderIdx + '|' + S.rejeicoes + '|' + S.passadas;
+}
+function chavePrazoT(){ return S.missaoIdx + '|' + S.sorteioIdx + '|' + S.passadas; }
+/* Qual contador está correndo agora. Duas telas têm relógio (escolha de equipe e
+   entrega de trama) e cada uma tem o seu campo, senão sair de uma para a outra
+   herdaria o tempo já gasto. */
+function campoCron(){
+  if (S.tela === 'proposta') return 'restante';
+  if (S.tela === 'trama') return 'restanteT';
+  return null;
+}
+function fmtTempo(ms){
+  var s = Math.ceil(ms / 1000), m = Math.floor(s / 60);
+  s = s % 60;
+  return m + ':' + (s < 10 ? '0' : '') + s;
+}
+function pintarCron(){
+  var el = $('cron');
+  if (!el || !S) return;
+  var campo = campoCron();
+  if (!campo) return;
+  var v = S[campo], acabou = v <= 0;
+  el.textContent = acabou ? 'ESGOTADO' : fmtTempo(v);
+  el.style.color = acabou ? 'var(--danger)'
+                 : (v <= 10000 ? 'var(--gold-soft)' : 'var(--muted)');
+  el.style.fontSize = acabou ? '20px' : '26px';
+}
+function reiniciarCron(){
+  var campo = campoCron();
+  if (campo){ S[campo] = PRAZO_MS; pintarCron(); }
+}
+function blocoCron(rotulo){
+  var campo = campoCron();
+  return '<div class="cron-wrap"><span class="cron-label">' + rotulo + '</span>' +
+         '<span id="cron" class="cron">' + fmtTempo(S[campo]) + '</span>' +
+         '<button class="cron-reset" onclick="reiniciarCron()">reiniciar</button></div>';
+}
+
+function telaProposta(){
+  /* Proposta nova (novo líder, nova missão, nova rejeição ou alguém abriu mão)
+     zera o minuto. Voltar de "Corrigir a equipe" NÃO zera — é a mesma proposta. */
+  if (S.prazoKey !== chavePrazo()){ S.prazoKey = chavePrazo(); S.restante = PRAZO_MS; }
+  var k = tamanhoEquipe(), h = trilhaHTML();
+  h += '<div class="card">';
+  h += '<div class="eyebrow">Missão ' + (S.missaoIdx + 1) + ' · Líder</div>';
+  h += '<h2 class="mt8" style="font-size:23px">' + esc(nomeDe(S.liderIdx)) + '</h2>';
+  h += '<div class="small muted mt8">Escolha ' + k + ' pessoas para a missão. Selecionadas: ' +
+       S.equipe.length + ' de ' + k + '.</div>';
+  h += blocoCron('Tempo para escolher');
+  h += '<div class="pgrid">';
+  for (var i = 0; i < S.n; i++){
+    var sel = S.equipe.indexOf(i) !== -1;
+    h += '<button class="pbtn ' + (sel ? 'sel' : '') + '" onclick="toggleEquipe(' + i + ')">' +
+         (i === S.liderIdx ? '<span class="crown">&#9819;</span>' : '') + esc(nomeDe(i)) + '</button>';
+  }
+  h += '</div></div>';
+  h += '<button class="btn" onclick="irVotacao()"' + (S.equipe.length === k ? '' : ' disabled') +
+       '>Levar à votação</button>';
+  h += '<button class="btn btn--ghost btn--sm mt12" onclick="passarLideranca()">' +
+       'Abrir mão e passar a liderança</button>';
+  h += painelTramas();
+  h += botaoAssassinar();
+  h += '<div class="rule">A liderança passa para o próximo jogador a cada proposta, aprovada ou não. ' +
+       'Cinco rejeições seguidas e os impostores vencem — abrir mão não conta como rejeição.</div>';
+  return h;
+}
+
+/* O líder desiste de montar equipe e repassa. Não incrementa S.rejeicoes de
+   propósito: não houve proposta, logo não houve rejeição. Fica registrado no
+   histórico porque é informação pública — quem se esquiva de liderar é leitura
+   de mesa legítima. */
+function passarLideranca(){
+  S.historico.push({
+    tipo:'passou', missao:S.missaoIdx, tentativa:S.rejeicoes + 1, lider:S.liderIdx
+  });
+  S.equipe = [];
+  S.passadas++;
+  S.liderIdx = (S.liderIdx + 1) % S.n;
+  render();
+}
+
+function toggleEquipe(i){
+  var pos = S.equipe.indexOf(i);
+  if (pos !== -1) S.equipe.splice(pos, 1);
+  else if (S.equipe.length < tamanhoEquipe()) S.equipe.push(i);
+  render();
+}
+function irVotacao(){ S.tela = 'votacao'; render(); }
+
+/* ------------------------------------------------------------
+   6. VOTAÇÃO
+   ------------------------------------------------------------ */
+function telaVotacao(){
+  var h = trilhaHTML();
+  h += '<div class="card"><div class="eyebrow">Votação aberta</div>';
+  h += '<div class="small muted mt8">' + esc(nomeDe(S.liderIdx)) + ' propôs:</div>';
+  h += '<div class="know-list" style="justify-content:flex-start;margin-top:10px">';
+  S.equipe.forEach(function(i){
+    h += '<span class="tag" style="color:var(--parch);font-size:14.5px;padding:8px 13px">' +
+         esc(nomeDe(i)) + '</span>';
+  });
+  h += '</div>';
+  h += '<div class="small muted mt16">Todos votam ao mesmo tempo. Registre o resultado:</div></div>';
+  h += '<div class="btn-row">';
+  h += '<button class="btn btn--azure" onclick="votou(true)">Aprovada</button>';
+  h += '<button class="btn btn--blood" onclick="votou(false)">Rejeitada</button></div>';
+  h += '<button class="btn btn--ghost btn--sm mt12" onclick="voltarProposta()">Corrigir a equipe</button>';
+  h += painelTramas();
+  h += botaoAssassinar();
+  return h;
+}
+
+function voltarProposta(){ S.tela = 'proposta'; render(); }
+
+function votou(aprovada){
+  S.historico.push({
+    tipo:'voto', missao:S.missaoIdx, tentativa:S.rejeicoes + 1,
+    lider:S.liderIdx, equipe:S.equipe.slice(), aprovada:aprovada
+  });
+  if (aprovada){
+    S.rejeicoes = 0; S.idxCarta = 0; S.cartas = [];
+    S.tela = 'missao';
+  } else {
+    S.rejeicoes++;
+    S.liderIdx = (S.liderIdx + 1) % S.n;
+    S.equipe = [];
+    if (S.rejeicoes >= 5){
+      return fim('mal', 'Cinco propostas rejeitadas em sequência. Os impostores venceram pela desconfiança.');
+    }
+    S.tela = 'proposta';
+  }
+  render();
+}
+
+/* ------------------------------------------------------------
+   7. MISSÃO
+   ------------------------------------------------------------ */
+function telaMissao(){
+  /* Trava de toque: ao trocar de jogador os botões nascem inertes por um
+     instante. Sem isso um duplo toque acidental registrava a carta da pessoa
+     seguinte, que nem tinha visto a tela — e o erro é invisível, porque o app
+     nunca mostra quem jogou o quê. O atraso é igual para todos os papéis. */
+  if (S.armadoPara !== S.idxCarta){
+    S.armadoPara = S.idxCarta;
+    S.armado = false;
+    setTimeout(function(){
+      if (S.tela === 'missao' && S.armadoPara === S.idxCarta){ S.armado = true; render(); }
+    }, ARMA_MS);
+  }
+  var i = S.equipe[S.idxCarta], trava = S.armado ? '' : ' disabled', h = '';
+  h += '<div class="center"><div class="eyebrow">Missão ' + (S.missaoIdx + 1) + ' · Carta ' +
+       (S.idxCarta + 1) + ' de ' + S.equipe.length + '</div>';
+  h += '<h2 class="mt8" style="font-size:22px">Passe o celular para<br>' + esc(nomeDe(i)) + '</h2>';
+  h += '<div class="small muted mt12">Ninguém mais pode ver a tela agora.</div></div>';
+  h += '<div class="card mt16">';
+  h += '<div class="small muted center">Escolha sua carta. O app só mostra quantas sabotagens ' +
+       'houve — nunca de quem.</div>';
+  h += '<div class="mt16"><button class="btn btn--selo seg-bem" onclick="jogarCarta(false)"' +
+       trava + '>Sucesso</button></div>';
+  h += '<div class="mt12"><button class="btn btn--selo seg-mal" onclick="jogarCarta(true)"' +
+       trava + '>Fracasso</button></div>';
+  h += '<div class="small muted center mt12">' + (S.armado
+        ? 'Só impostores conseguem sabotar de fato. Esta tela é idêntica para todos os ' +
+          'papéis — ninguém descobre nada olhando por cima.'
+        : 'Aguarde um instante — os botões liberam sozinhos. É só para evitar que um ' +
+          'toque duplo jogue a carta de quem vem depois.') + '</div>';
+  h += '</div>';
+  return h;
+}
+
+function jogarCarta(falhou){
+  /* O botão Fracasso é renderizado ATIVO para todos os papéis, de propósito:
+     se ele aparecesse apagado para a Resistência, a simples aparência da tela
+     entregaria quem é impostor a qualquer um que olhasse de relance na hora de
+     passar o celular. A filtragem acontece aqui, no silêncio: quem não é
+     impostor tem a carta registrada como Sucesso e o fluxo segue idêntico,
+     sem aviso, sem travada, sem diferença de tempo. */
+  if (!S.armado) return;          /* rede de segurança além do atributo disabled */
+  S.armado = false;
+  var quemJoga = S.equipe[S.idxCarta];
+  S.cartas.push(falhou && ehMal(quemJoga));
+  S.idxCarta++;
+  if (S.idxCarta < S.equipe.length) return render();
+  /* A última carta NÃO apura nada: quem estivesse com o celular na mão veria o
+     desfecho antes da mesa. O resultado só é calculado em revelarMissao(), com
+     o aparelho já no centro. Até lá S.resultados e S.historico seguem intactos,
+     senão a trilha de escudos e o histórico entregariam o resultado sozinhos. */
+  S.tela = 'apurar';
+  render();
+}
+
+function revelarMissao(){
+  S.ultFalhas = contar(S.cartas, true);
+  S.resultados[S.missaoIdx] = (S.ultFalhas >= falhasNecessarias(S.n, S.missaoIdx)) ? 'falha' : 'sucesso';
+  /* Registra SÓ o que é público: quem foi, quantas sabotagens, o desfecho.
+     Jamais quem jogou cada carta — isso é o segredo central do jogo. */
+  S.historico.push({
+    tipo:'missao', missao:S.missaoIdx, equipe:S.equipe.slice(),
+    falhas:S.ultFalhas, necessarias:falhasNecessarias(S.n, S.missaoIdx),
+    resultado:S.resultados[S.missaoIdx]
+  });
+  S.tela = 'resultado';
+  render();
+}
+
+/* Tela-tampão entre a última carta e o desfecho. Sem trilha de escudos e sem
+   botão de histórico de propósito: qualquer um dos dois deixaria o resultado
+   visível aqui. */
+function telaApurar(){
+  var h = '<div class="center"><div class="eyebrow">Missão ' + (S.missaoIdx + 1) + '</div>';
+  h += '<h2 class="mt8" style="font-size:22px">Todas as cartas<br>foram jogadas</h2>';
+  h += '<div class="small muted mt12">' + S.equipe.length + ' cartas na mesa, embaralhadas.</div></div>';
+  h += '<div class="card mt16 center">';
+  h += '<div class="small muted">Devolva o celular ao centro da mesa antes de revelar. ' +
+       'Quem jogou a última carta não deve ser o primeiro a ver o resultado.</div>';
+  h += '</div>';
+  h += '<button class="btn mt16" onclick="revelarMissao()">Revelar resultado</button>';
+  return h;
+}
+
+/* ------------------------------------------------------------
+   7b. HISTÓRICO
+   ------------------------------------------------------------ */
+function tagsEquipe(lista){
+  var h = '<div class="know-list" style="justify-content:flex-start;margin-top:8px">';
+  lista.forEach(function(i){
+    h += '<span class="tag" style="color:var(--parch);font-size:13.5px;padding:6px 11px">' +
+         esc(nomeDe(i)) + '</span>';
+  });
+  return h + '</div>';
+}
+
+function telaHistorico(){
+  var h = '<div class="card"><div class="eyebrow">Histórico da partida</div>';
+  h += '<div class="small muted mt8">Só o que é público na mesa. O app nunca registra ' +
+       'quem jogou Sucesso ou Fracasso — apenas quantas sabotagens houve.</div></div>';
+
+  var vazio = true;
+
+  for (var m = 0; m < 5; m++){
+    var votos = [], mis = null;
+    S.historico.forEach(function(e){
+      if (e.missao !== m) return;
+      if (e.tipo === 'voto' || e.tipo === 'passou') votos.push(e);
+      else if (e.tipo === 'missao') mis = e;
+    });
+    if (!votos.length && !mis) continue;
+    vazio = false;
+
+    h += '<div class="card mt12"><div class="eyebrow">Missão ' + (m + 1) + '</div>';
+
+    if (mis){
+      var ok = mis.resultado === 'sucesso';
+      h += '<div class="small mt8" style="font-weight:700;letter-spacing:.08em;color:' +
+           (ok ? 'var(--azure)' : 'var(--danger)') + '">' + (ok ? 'SUCESSO' : 'SABOTADA') + '</div>';
+      h += '<div class="small muted mt8">Foram: </div>';
+      h += tagsEquipe(mis.equipe);
+      h += '<div class="small muted mt8">' +
+           (mis.falhas === 0 ? 'Nenhuma carta de Fracasso.'
+            : mis.falhas === 1 ? '1 carta de Fracasso.'
+            : mis.falhas + ' cartas de Fracasso.');
+      if (mis.necessarias === 2 && mis.falhas === 1)
+        h += ' Esta missão exigia duas — passou.';
+      h += '</div>';
+    } else {
+      h += '<div class="small muted mt8">Ainda em disputa.</div>';
+    }
+
+    var nVotos = 0;
+    votos.forEach(function(v){ if (v.tipo === 'voto') nVotos++; });
+    h += '<div class="small muted mt16" style="border-top:1px solid var(--line);padding-top:12px">' +
+         nVotos + ' votação' + (nVotos === 1 ? '' : 'ões') + ' nesta missão</div>';
+
+    votos.forEach(function(v){
+      h += '<div class="holder" style="margin-top:10px">';
+      if (v.tipo === 'passou'){
+        h += '<div class="holder-name">' + esc(nomeDe(v.lider)) +
+             ' <span style="color:var(--muted);font-weight:700">ABRIU MÃO</span></div>';
+        h += '<div class="small muted" style="margin-top:6px">Passou a liderança sem propor equipe. ' +
+             'Não contou rejeição.</div>';
+      } else {
+        h += '<div class="holder-name">Proposta ' + v.tentativa + ' · líder ' + esc(nomeDe(v.lider)) +
+             ' <span style="color:' + (v.aprovada ? 'var(--azure)' : 'var(--danger)') + ';font-weight:700">' +
+             (v.aprovada ? 'APROVADA' : 'REJEITADA') + '</span></div>';
+        h += tagsEquipe(v.equipe);
+      }
+      h += '</div>';
+    });
+
+    h += '</div>';
+  }
+
+  if (vazio) h += '<div class="card mt12 center"><div class="small muted">Nada registrado ainda.</div></div>';
+
+  h += '<button class="btn mt16" onclick="fecharHistorico()">Voltar</button>';
+  return h;
+}
+
+/* ------------------------------------------------------------
+   8. RESULTADO
+   ------------------------------------------------------------ */
+function telaResultado(){
+  var ok = S.resultados[S.missaoIdx] === 'sucesso', h = trilhaHTML();
+  h += '<div class="card center"><div class="eyebrow">Missão ' + (S.missaoIdx + 1) + '</div>';
+  h += '<div class="result-big mt8" style="color:' + (ok ? 'var(--azure)' : 'var(--danger)') + '">' +
+       (ok ? 'SUCESSO' : 'SABOTADA') + '</div>';
+  h += '<div class="small muted mt12">' +
+       (S.ultFalhas === 0 ? 'Nenhuma carta de Fracasso.'
+        : S.ultFalhas === 1 ? '1 carta de Fracasso na mesa.'
+        : S.ultFalhas + ' cartas de Fracasso na mesa.') + '</div>';
+  if (ok && S.ultFalhas === 1)
+    h += '<div class="small muted mt8">Houve uma sabotagem, mas esta missão exigia duas.</div>';
+  h += '</div>';
+  h += '<button class="btn" onclick="continuar()">Continuar</button>';
+  h += painelTramas();
+  h += botaoAssassinar();
+  return h;
+}
+
+function continuar(){
+  var sucessos = contar(S.resultados, 'sucesso'), falhas = contar(S.resultados, 'falha');
+  if (falhas >= 3) return fim('mal', 'Três missões sabotadas. Os impostores venceram.');
+  if (sucessos >= 3){
+    if (!cacaAtiva()) return fim('bem', 'Três missões cumpridas. A Resistência venceu.');
+    S.cacaAntecipada = false; S.cacaAberta = false;
+    S.tela = 'caca';
+    return render();
+  }
+  S.missaoIdx++;
+  S.liderIdx = (S.liderIdx + 1) % S.n;
+  abrirRodada();
+}
+
+/* ------------------------------------------------------------
+   9. CAÇA AO COMANDANTE
+   ------------------------------------------------------------ */
+function telaCaca(){
+  var ant = S.cacaAntecipada, h;
+  if (ant){
+    h = '<div class="card center"><div class="eyebrow">Assassinato · missão ' + (S.missaoIdx + 1) + '</div>';
+    h += '<h2 class="mt8" style="font-size:23px">Os impostores vão atirar</h2>';
+    h += '<div class="small muted mt12">Um tiro só, e a partida acaba aqui. Acertando o Comandante, ' +
+         'os impostores vencem. Errando, a Resistência vence na hora.</div></div>';
+  } else {
+    h = '<div class="card center"><div class="eyebrow">Três missões cumpridas</div>';
+    h += '<h2 class="mt8" style="font-size:23px">A palavra final é dos impostores</h2>';
+    h += '<div class="small muted mt12">Os impostores podem conversar abertamente agora e apontam, ' +
+         'juntos, quem acreditam ser o Comandante. Se acertarem, viram o jogo.</div></div>';
+  }
+  /* Voltar só é possível ANTES de os hackers se revelarem: depois disso o
+     Iniciante já sabe quem são os aliados, e desistir deixaria a partida seguir
+     com essa informação vazada. */
+  var podeVoltar = ant && !S.cacaAberta;
+  var voltar = podeVoltar
+    ? '<button class="btn btn--ghost btn--sm mt12" onclick="desistirAssassinato()">Cancelar e voltar à partida</button>'
+    : '';
+
+  /* Na caça o Iniciante entra na conversa, então os hackers precisam se
+     reconhecer primeiro — senão ele não teria como participar da decisão. Fica
+     atrás de um toque para ninguém revelar antes da hora. */
+  if (assimetriaAtiva()){
+    if (!S.cacaAberta){
+      h += '<div class="card"><div class="small muted">Nesta partida ' +
+           (redeAtiva() ? 'os Iniciantes jogaram' : 'um dos hackers jogou') +
+           ' às cegas. Antes de apontarem, eles precisam se reconhecer.</div>';
+      h += '<button class="btn mt12" onclick="abrirCaca()">Revelar os hackers entre si</button></div>';
+      if (ant) h += '<div class="hint">Depois de revelar não dá mais para voltar atrás.</div>';
+      h += voltar;
+      return h;
+    }
+    h += '<div class="card"><div class="eyebrow">Os hackers desta partida</div><div class="roster">';
+    for (var m = 0; m < S.n; m++){
+      if (ehMal(m))
+        h += '<span class="tag mal">' + esc(nomeDe(m)) + ' · ' + PAPEIS[papelDe(m)].nome + '</span>';
+    }
+    h += '</div><div class="small muted mt12">A mesa não deve ver esta tela — só os hackers.</div></div>';
+  }
+
+  h += '<div class="card"><div class="eyebrow">O Comandante é</div><div class="pgrid">';
+  for (var i = 0; i < S.n; i++){
+    h += '<button class="pbtn" onclick="apontar(' + i + ')">' + esc(nomeDe(i)) + '</button>';
+  }
+  h += '</div></div>';
+  h += voltar;
+  return h;
+}
+
+function abrirCaca(){ S.cacaAberta = true; render(); }
+
+function apontar(i){
+  S.apontado = i;
+  var acertou = papelDe(i) === 'comandante';
+  if (S.cacaAntecipada){
+    var quando = ' durante a missão ' + (S.missaoIdx + 1);
+    if (acertou) fim('mal', 'Os impostores assassinaram ' + nomeDe(i) + quando + ' — e era o Comandante. Eles venceram.');
+    else fim('bem', 'Os impostores assassinaram ' + nomeDe(i) + quando + ', que não era o Comandante. A Resistência venceu.');
+    return;
+  }
+  if (acertou){
+    fim('mal', 'Os impostores apontaram ' + nomeDe(i) + ' — e era o Comandante. Eles venceram.');
+  } else {
+    fim('bem', 'Os impostores apontaram ' + nomeDe(i) + ', que não era o Comandante. A Resistência resistiu.');
+  }
+}
+
+/* ------------------------------------------------------------
+   10. FIM
+   ------------------------------------------------------------ */
+function fim(lado, motivo){
+  S.vencedor = lado; S.motivo = motivo; S.tela = 'fim'; render();
+  tocarVitoria(lado);
+}
+
+function telaFim(){
+  var bem = S.vencedor === 'bem', h = trilhaHTML();
+  h += '<div class="card center"><div class="eyebrow">Fim da partida</div>';
+  h += '<div class="verdict mt8" style="color:' + (bem ? 'var(--azure)' : 'var(--danger)') + '">' +
+       (bem ? 'A Resistência vence' : 'Os impostores vencem') + '</div>';
+  h += '<div class="small muted mt12">' + esc(S.motivo) + '</div></div>';
+  h += '<div class="card"><div class="eyebrow">Os papéis</div><div class="mt12">';
+  for (var i = 0; i < S.n; i++){
+    var p = PAPEIS[papelDe(i)];
+    h += '<div class="reveal-row"><b>' + esc(nomeDe(i)) +
+         (i === S.apontado ? ' <span class="muted small">(' + (S.cacaAntecipada ? 'assassinado' : 'apontado') + ')</span>' : '') + '</b>' +
+         '<span class="r side-' + p.lado + '">' + p.nome + '</span></div>';
+  }
+  h += '</div></div>';
+  h += '<button class="btn" onclick="novaPartida()">Nova partida — mesma configuração</button>';
+  h += '<button class="btn btn--ghost mt12" onclick="zerar()">Voltar à configuração</button>';
+  return h;
+}
+
+function guardarConfig(){
+  return {n:S.n, tramaOn:S.tramaOn, tramaOp:S.tramaOp, caca:S.caca,
+          comandanteOn:S.comandanteOn, modoHacker:S.modoHacker, nomes:S.nomes.slice()};
+}
+function aplicarConfig(cfg){
+  S = estadoInicial();
+  S.n = cfg.n; S.tramaOn = cfg.tramaOn; S.tramaOp = cfg.tramaOp;
+  S.caca = cfg.caca; S.comandanteOn = cfg.comandanteOn;
+  S.modoHacker = cfg.modoHacker; S.nomes = cfg.nomes;
+}
+function novaPartida(){
+  var cfg = guardarConfig();
+  for (var i = 0; i < S.n; i++) cfg.nomes[i] = S.jogadores[i].nome;
+  aplicarConfig(cfg);
+  distribuir();
+}
+function zerar(){ aplicarConfig(guardarConfig()); render(); }
+
+/* ============================================================
+   AJUSTES DO APARELHO
+   Ficam fora de S de propósito: valem para todas as partidas e sobrevivem a
+   "Nova partida" e "Voltar à configuração". Gravados no localStorage quando ele
+   existe — no Apps Script às vezes não existe, e aí valem só até fechar a aba.
+   ============================================================ */
+var AJ = {cores:false, som:true};
+try { var _aj = JSON.parse(localStorage.getItem('resistencia_ajustes') || 'null');
+      if (_aj) { AJ.cores = !!_aj.cores; AJ.som = _aj.som !== false; } } catch(e){}
+function salvarAjustes(){
+  try { localStorage.setItem('resistencia_ajustes', JSON.stringify(AJ)); } catch(e){}
+  document.body.classList.toggle('cores', AJ.cores);
+}
+function abrirAjustes(){
+  var h = '<div class="ajustes-fundo" onclick="if(event.target===this)fecharAjustes()">' +
+          '<div class="ajustes"><div class="eyebrow">Ajustes</div><div class="mt12">';
+  h += '<div class="role-toggle ' + (AJ.cores ? 'on' : '') + '" onclick="AJ.cores=!AJ.cores;salvarAjustes();abrirAjustes()">' +
+       '<div class="box"></div><div><div class="rt-name">Cores nas telas secretas</div>' +
+       '<div class="small muted">Azul e vermelho na revelação, nos exames e nos botões da missão. ' +
+       'Desligado, tudo fica numa cor só — cor forte reflete em óculos.</div></div></div>';
+  h += '<div class="role-toggle ' + (AJ.som ? 'on' : '') + '" onclick="AJ.som=!AJ.som;salvarAjustes();abrirAjustes()">' +
+       '<div class="box"></div><div><div class="rt-name">Som no fim da partida</div>' +
+       '<div class="small muted">Uma fanfarra quando a Resistência vence, um alarme quando os ' +
+       'hackers vencem.</div></div></div>';
+  h += '</div><div class="mt12" style="display:flex;gap:8px">' +
+       '<button class="btn btn--ghost" onclick="tocarVitoria(\'bem\', true)">Ouvir Resistência</button>' +
+       '<button class="btn btn--ghost" onclick="tocarVitoria(\'mal\', true)">Ouvir hackers</button></div>' +
+       '<button class="btn mt12" onclick="fecharAjustes()">Fechar</button></div></div>';
+  $('ajustesRaiz').innerHTML = h;
+}
+function fecharAjustes(){ $('ajustesRaiz').innerHTML = ''; }
+
+/* Som gerado na hora com Web Audio — nada de arquivo para hospedar no Apps Script.
+   O navegador só libera áudio depois de um toque; como o fim da partida sempre
+   vem de um botão, o contexto já nasce liberado. */
+var _audio = null;
+function tocarVitoria(lado, forcar){
+  if (!AJ.som && !forcar) return;
+  try {
+    _audio = _audio || new (window.AudioContext || window.webkitAudioContext)();
+    if (_audio.state === 'suspended') _audio.resume();
+  } catch(e){ return; }
+  var t0 = _audio.currentTime + 0.05;
+  function nota(freq, ini, dur, tipo, vol){
+    var o = _audio.createOscillator(), g = _audio.createGain();
+    o.type = tipo; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t0 + ini);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + ini + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + ini + dur);
+    o.connect(g); g.connect(_audio.destination);
+    o.start(t0 + ini); o.stop(t0 + ini + dur + 0.05);
+  }
+  if (lado === 'bem'){
+    /* Fanfarra em dó maior: arpejo subindo e acorde final sustentado. */
+    [[523.25,0],[659.25,.14],[783.99,.28],[1046.5,.42]].forEach(function(n){
+      nota(n[0], n[1], .32, 'triangle', .22); nota(n[0], n[1], .32, 'square', .04);
+    });
+    [523.25,659.25,783.99,1046.5].forEach(function(f){ nota(f, .62, 1.3, 'triangle', .16); });
+  } else {
+    /* Alarme em menor: notas graves descendo com timbre áspero e um pulso final. */
+    [[220,0],[207.65,.18],[174.61,.36],[146.83,.54]].forEach(function(n){
+      nota(n[0], n[1], .26, 'sawtooth', .10); nota(n[0] / 2, n[1], .26, 'square', .06);
+    });
+    [0,.12,.24].forEach(function(d){ nota(110, .8 + d, .1, 'square', .08); });
+    nota(73.42, 1.15, 1.2, 'sawtooth', .09);
+  }
+}
+
+/* ============================================================ */
+setInterval(function(){
+  var agora = Date.now(), dt = _ultTick ? agora - _ultTick : 0;
+  _ultTick = agora;
+  var campo = S && campoCron();
+  if (!campo || S[campo] <= 0){ pintarCron(); return; }
+  S[campo] = Math.max(0, S[campo] - dt);
+  pintarCron();
+}, 250);
+
+/* Service worker: guarda o jogo no aparelho para abrir sem internet.
+   Só existe fora do Apps Script; lá o registro falha em silêncio. */
+if ('serviceWorker' in navigator && location.protocol === 'https:'){
+  navigator.serviceWorker.register('sw.js').catch(function(){});
+}
+S = estadoInicial();
+salvarAjustes();
+render();
+</script>
+</body>
+</html>
