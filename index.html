@@ -92,6 +92,19 @@ button{font-family:inherit;font-size:16px;cursor:pointer;border:0}
 input[type=text]{width:100%;padding:12px 13px;border:1px solid var(--line);clip-path:var(--notch-sm);
   background:#0D1218;color:var(--parch);font-family:var(--disp);font-size:16px}
 input[type=text]:focus{outline:none;border-color:var(--gold);background:#101820}
+/* Arrastar para reordenar: a alça fica à direita e é a única parte que arrasta,
+   para o toque no campo continuar abrindo o teclado normalmente. */
+.drag{flex:0 0 auto;width:36px;height:44px;display:grid;place-items:center;color:var(--muted);
+  font-size:18px;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+.name-line.arrastando{position:relative;z-index:5;opacity:.92}
+.name-line.arrastando input{border-color:var(--gold)}
+.name-line.anima{transition:transform .15s ease}
+.grupos{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.grupo{display:flex;align-items:center;background:var(--panel-2);border:1px solid var(--line)}
+.grupo.on{border-color:var(--gold)}
+.grupo button{background:none;border:0;color:var(--parch);font-family:var(--disp);font-size:13.5px;
+  padding:8px 10px;cursor:pointer}
+.grupo .x{color:var(--muted);padding:8px 9px 8px 2px;font-size:15px}
 
 .role-toggle{display:flex;align-items:flex-start;gap:12px;padding:13px 0;border-top:1px solid var(--line)}
 .role-toggle:first-of-type{border-top:0}
@@ -635,13 +648,20 @@ function telaSetup(){
        (S.comandanteOn ? '1 Comandante + ' + (m.bem - 1) + ' da Resistência'
                        : m.bem + ' da Resistência') +
        ' · ' + m.mal + ' impostores</div>';
-  h += '<div class="names">';
+  h += gruposHTML();
+  h += '<div class="names" id="nomes">';
   for (var i = 0; i < S.n; i++){
     h += '<div class="name-line"><span class="num">' + (i + 1) + '</span>' +
          '<input type="text" autocomplete="off" placeholder="Jogador ' + (i + 1) + '" ' +
-         'value="' + esc(S.nomes[i]) + '" oninput="setNome(' + i + ',this.value)"></div>';
+         'value="' + esc(S.nomes[i]) + '" oninput="setNome(' + i + ',this.value)">' +
+         '<span class="drag" onpointerdown="iniciarArraste(event,' + i + ')" ' +
+         'aria-label="Arrastar para mudar a posição">⠿</span></div>';
   }
   h += '</div>';
+  h += '<div class="small muted mt8">Segure o ⠿ e arraste para mudar a ordem da mesa.</div>';
+  h += '<button class="btn btn--ghost btn--sm mt12" onclick="salvarGrupo()">' +
+       (S.grupoAtual ? 'Salvar alterações em “' + esc(S.grupoAtual) + '”' : 'Salvar este grupo') +
+       '</button>';
   h += '<div class="roster">';
   if (S.comandanteOn) h += '<span class="tag bem">Comandante</span>';
   for (var b = (S.comandanteOn ? 1 : 0); b < m.bem; b++)
@@ -734,6 +754,107 @@ function telaSetup(){
 
 function setN(k){ S.n = k; render(); }
 function setNome(i, v){ S.nomes[i] = v; }
+
+/* ------------------------------------------------------------
+   ARRASTAR PARA REORDENAR — feito com pointer events porque o drag-and-drop
+   nativo do HTML não funciona com o dedo no celular.
+   ------------------------------------------------------------ */
+var _arr = null;
+function iniciarArraste(ev, i){
+  ev.preventDefault();
+  if (document.activeElement) document.activeElement.blur();
+  var linhas = Array.prototype.slice.call($('nomes').children);
+  var passo = linhas.length > 1 ? linhas[1].getBoundingClientRect().top - linhas[0].getBoundingClientRect().top
+                                : linhas[0].offsetHeight;
+  _arr = {i:i, alvo:i, y0:ev.clientY, passo:passo, linhas:linhas};
+  linhas[i].classList.add('arrastando');
+  linhas.forEach(function(l, k){ if (k !== i) l.classList.add('anima'); });
+  window.addEventListener('pointermove', moverArraste);
+  window.addEventListener('pointerup', soltarArraste);
+  window.addEventListener('pointercancel', soltarArraste);
+}
+function moverArraste(ev){
+  if (!_arr) return;
+  var a = _arr, dy = ev.clientY - a.y0, n = a.linhas.length;
+  /* Não deixa a linha sair da lista. */
+  dy = Math.max(-a.i * a.passo, Math.min((n - 1 - a.i) * a.passo, dy));
+  a.alvo = Math.max(0, Math.min(n - 1, a.i + Math.round(dy / a.passo)));
+  a.linhas[a.i].style.transform = 'translateY(' + dy + 'px)';
+  /* As outras linhas abrem espaço para onde a arrastada vai cair. */
+  a.linhas.forEach(function(l, k){
+    if (k === a.i) return;
+    var t = 0;
+    if (a.alvo > a.i && k > a.i && k <= a.alvo) t = -a.passo;
+    if (a.alvo < a.i && k < a.i && k >= a.alvo) t = a.passo;
+    l.style.transform = t ? 'translateY(' + t + 'px)' : '';
+  });
+}
+function soltarArraste(){
+  if (!_arr) return;
+  var a = _arr; _arr = null;
+  window.removeEventListener('pointermove', moverArraste);
+  window.removeEventListener('pointerup', soltarArraste);
+  window.removeEventListener('pointercancel', soltarArraste);
+  if (a.alvo !== a.i){
+    var nome = S.nomes.splice(a.i, 1)[0];
+    S.nomes.splice(a.alvo, 0, nome);
+  }
+  var y = window.scrollY; render(); window.scrollTo(0, y);
+}
+
+/* ------------------------------------------------------------
+   GRUPOS SALVOS — listas de jogadores guardadas no próprio celular
+   (localStorage). Nada de servidor: cada aparelho tem os seus grupos.
+   ------------------------------------------------------------ */
+var CHAVE_GRUPOS = 'resistencia_grupos';
+function lerGrupos(){
+  try { return JSON.parse(localStorage.getItem(CHAVE_GRUPOS) || '[]'); } catch(e){ return []; }
+}
+function gravarGrupos(g){
+  try { localStorage.setItem(CHAVE_GRUPOS, JSON.stringify(g)); return true; }
+  catch(e){ alert('Não foi possível salvar neste aparelho.'); return false; }
+}
+function gruposHTML(){
+  var g = lerGrupos();
+  if (!g.length) return '';
+  var h = '<div class="mt12"><div class="eyebrow">Grupos salvos</div><div class="grupos">';
+  g.forEach(function(gr, k){
+    h += '<div class="grupo' + (gr.nome === S.grupoAtual ? ' on' : '') + '">' +
+         '<button onclick="carregarGrupo(' + k + ')">' + esc(gr.nome) +
+         ' <span class="muted small">· ' + gr.jogadores.length + '</span></button>' +
+         '<button class="x" onclick="apagarGrupo(' + k + ')" aria-label="Apagar grupo">×</button></div>';
+  });
+  return h + '</div></div>';
+}
+function carregarGrupo(k){
+  var gr = lerGrupos()[k]; if (!gr) return;
+  S.nomes = gr.jogadores.slice();
+  while (S.nomes.length < 10) S.nomes.push('');
+  S.n = Math.max(5, Math.min(10, gr.jogadores.length));
+  S.grupoAtual = gr.nome;
+  render();
+}
+function salvarGrupo(){
+  var jogadores = S.nomes.slice(0, S.n).map(function(x){ return (x || '').trim(); });
+  if (!jogadores.some(function(x){ return x; })){
+    alert('Preencha pelo menos um nome antes de salvar.'); return;
+  }
+  var nome = prompt('Nome do grupo (ex.: Galera de sexta):', S.grupoAtual || '');
+  if (nome === null) return;
+  nome = nome.trim(); if (!nome) return;
+  var g = lerGrupos(), k = -1;
+  for (var i = 0; i < g.length; i++) if (g[i].nome.toLowerCase() === nome.toLowerCase()) k = i;
+  if (k >= 0 && nome !== S.grupoAtual && !confirm('Já existe o grupo “' + g[k].nome + '”. Substituir?')) return;
+  var item = {nome:nome, jogadores:jogadores};
+  if (k >= 0) g[k] = item; else g.push(item);
+  if (gravarGrupos(g)){ S.grupoAtual = nome; render(); }
+}
+function apagarGrupo(k){
+  var g = lerGrupos(); if (!g[k]) return;
+  if (!confirm('Apagar o grupo “' + g[k].nome + '”?')) return;
+  if (g[k].nome === S.grupoAtual) S.grupoAtual = null;
+  g.splice(k, 1); gravarGrupos(g); render();
+}
 /* O CSS deixa a caça inerte quando não há Comandante, mas pointer-events só
    barra o dedo — a regra precisa valer na função também. */
 function toggleCaca(){ if (!S.comandanteOn) return; S.caca = !S.caca; render(); }
@@ -1680,14 +1801,14 @@ function telaFim(){
 }
 
 function guardarConfig(){
-  return {n:S.n, tramaOn:S.tramaOn, tramaOp:Object.assign({}, S.tramaOp), caca:S.caca,
+  return {n:S.n, tramaOn:S.tramaOn, tramaOp:Object.assign({}, S.tramaOp), caca:S.caca, grupoAtual:S.grupoAtual,
           comandanteOn:S.comandanteOn, modoHacker:S.modoHacker, nomes:S.nomes.slice()};
 }
 function aplicarConfig(cfg){
   S = estadoInicial();
   S.n = cfg.n; S.tramaOn = cfg.tramaOn; S.tramaOp = cfg.tramaOp;
   S.caca = cfg.caca; S.comandanteOn = cfg.comandanteOn;
-  S.modoHacker = cfg.modoHacker; S.nomes = cfg.nomes;
+  S.modoHacker = cfg.modoHacker; S.nomes = cfg.nomes; S.grupoAtual = cfg.grupoAtual || null;
 }
 function novaPartida(){
   var cfg = guardarConfig();
