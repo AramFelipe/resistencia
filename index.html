@@ -202,9 +202,13 @@ body.cores .know-list .tag .kr.iniciante{color:#8FD9EA}
   border:1px solid var(--line);color:var(--muted);font-size:19px;cursor:pointer;border-radius:50%}
 .gear:active{color:var(--parch)}
 body.segredo .gear{display:none}
+/* Modo compacto da configuração: só o nome de cada opção. */
+body.compacto.na-setup #app .role-toggle .small,
+body.compacto.na-setup #app .hint{display:none}
+body.compacto.na-setup #app .role-toggle{padding:9px 0;align-items:center}
 .ajustes-fundo{position:fixed;inset:0;z-index:50;background:rgba(5,7,10,.78);
   display:flex;align-items:flex-end;justify-content:center;padding:16px}
-.ajustes{width:100%;max-width:520px;background:var(--panel);border:1px solid var(--line);
+.ajustes{width:100%;max-width:520px;max-height:calc(100vh - 32px);overflow-y:auto;background:var(--panel);border:1px solid var(--line);
   padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px))}
 .btn--kill{background:var(--panel-2);border:1px solid rgba(226,73,94,.45);color:#F0919E;margin-top:22px}
 
@@ -658,6 +662,7 @@ function render(){
   /* Nas telas em que o celular está na mão de um só, a engrenagem some: um toque
      sem querer abriria o painel por cima do selo. */
   document.body.classList.toggle('combot', !!(S.bot && S.jogadores.length));
+  document.body.classList.toggle('na-setup', S.tela === 'setup');
   document.body.classList.toggle('segredo',
     S.tela === 'revelacao' || S.tela === 'exame' || S.tela === 'missao');
   window.scrollTo(0, 0);
@@ -685,7 +690,7 @@ function telaSetup(){
   for (var i = 0; i < S.n; i++){
     h += '<div class="name-line"><span class="num">' + (i + 1) + '</span>' +
          (S.nomes[i] === BOT_TAG
-           ? '<div class="bot-nome">🤖 Bot</div>'
+           ? '<div class="bot-nome">🤖 ' + esc(nomeDoBot()) + '</div>'
            : '<input type="text" autocomplete="off" placeholder="Jogador ' + (i + 1) + '" ' +
              'value="' + esc(S.nomes[i]) + '" oninput="setNome(' + i + ',this.value)">') +
          '<span class="drag" onpointerdown="iniciarArraste(event,' + i + ')" ' +
@@ -1001,7 +1006,7 @@ function distribuir(){
   S.maos = [];
   for (var i = 0; i < S.n; i++){
     var ehBot = S.bot && S.nomes[i] === BOT_TAG;
-    S.jogadores.push({nome: ehBot ? 'Bot' : ((S.nomes[i] || '').trim() || ('Jogador ' + (i + 1))),
+    S.jogadores.push({nome: ehBot ? nomeDoBot() : ((S.nomes[i] || '').trim() || ('Jogador ' + (i + 1))),
                       papel:lista[i], bot:ehBot});
     S.maos.push([]);
   }
@@ -1490,9 +1495,9 @@ function telaProposta(){
   }
   if (botLider){
     h += '<div class="card"><div class="eyebrow">Missão ' + (S.missaoIdx + 1) + ' · Líder</div>';
-    h += '<h2 class="mt8" style="font-size:23px">🤖 Bot</h2>';
+    h += '<h2 class="mt8" style="font-size:23px">🤖 ' + esc(nomeDe(S.botIdx)) + '</h2>';
     h += '<div class="small muted mt8">' + (S.rejeicoes === 4 ? 'Hammer — última proposta. ' : '') +
-         'O bot montou o time:</div>' + tagsEquipe(S.equipe) + '</div>';
+         esc(nomeDe(S.botIdx)) + ' montou o time:</div>' + tagsEquipe(S.equipe) + '</div>';
     h += '<button class="btn" onclick="irVotacao()">Levar à votação</button>';
     h += botaoAssassinar();
     return h;
@@ -1973,12 +1978,21 @@ function zerar(){ aplicarConfig(guardarConfig()); render(); }
    "Nova partida" e "Voltar à configuração". Gravados no localStorage quando ele
    existe — no Apps Script às vezes não existe, e aí valem só até fechar a aba.
    ============================================================ */
-var AJ = {cores:false, som:true};
+var AJ = {cores:false, som:true, compacto:false, nomeBot:'Bot'};
 try { var _aj = JSON.parse(localStorage.getItem('resistencia_ajustes') || 'null');
-      if (_aj) { AJ.cores = !!_aj.cores; AJ.som = _aj.som !== false; } } catch(e){}
+      if (_aj) { AJ.cores = !!_aj.cores; AJ.som = _aj.som !== false; AJ.compacto = !!_aj.compacto;
+                  AJ.nomeBot = (_aj.nomeBot || 'Bot'); } } catch(e){}
 function salvarAjustes(){
   try { localStorage.setItem('resistencia_ajustes', JSON.stringify(AJ)); } catch(e){}
   document.body.classList.toggle('cores', AJ.cores);
+  document.body.classList.toggle('compacto', AJ.compacto);
+}
+function nomeDoBot(){ return (AJ.nomeBot || '').trim() || 'Bot'; }
+function mudarNomeBot(v){
+  AJ.nomeBot = v; salvarAjustes();
+  /* Partida em andamento: o bot já tem nome em S.jogadores — atualiza lá também. */
+  if (S.bot && S.botIdx >= 0 && S.jogadores[S.botIdx]) S.jogadores[S.botIdx].nome = nomeDoBot();
+  render();
 }
 function abrirAjustes(){
   var h = '<div class="ajustes-fundo" onclick="if(event.target===this)fecharAjustes()">' +
@@ -1991,6 +2005,13 @@ function abrirAjustes(){
        '<div class="box"></div><div><div class="rt-name">Som no fim da partida</div>' +
        '<div class="small muted">Uma fanfarra quando a Resistência vence, um alarme quando os ' +
        'hackers vencem.</div></div></div>';
+  h += '<div class="role-toggle ' + (AJ.compacto ? 'on' : '') + '" onclick="AJ.compacto=!AJ.compacto;salvarAjustes();abrirAjustes()">' +
+       '<div class="box"></div><div><div class="rt-name">Esconder descrições na configuração</div>' +
+       '<div class="small muted">Mostra só o nome de cada opção na tela inicial, sem os textos ' +
+       'explicativos e avisos — menos rolagem até as opções.</div></div></div>';
+  h += '<div class="mt12"><div class="rt-name">Nome do bot</div>' +
+       '<input type="text" class="mt8" maxlength="20" placeholder="Bot" value="' + esc(AJ.nomeBot) + '" ' +
+       'onchange="mudarNomeBot(this.value)"></div>';
   h += '</div><div class="mt12" style="display:flex;gap:8px">' +
        '<button class="btn btn--ghost" onclick="tocarVitoria(\'bem\', true)">Ouvir Resistência</button>' +
        '<button class="btn btn--ghost" onclick="tocarVitoria(\'mal\', true)">Ouvir hackers</button></div>' +
@@ -2236,8 +2257,7 @@ function botVotar(time){
   var hammer = S.rejeicoes >= 4;
   if (hammer) return true;                      /* nunca rejeita o hammer, qualquer papel */
   var pub = votoPublico(time);
-  var papel = botPapel(), priv = modeloPrivado(), m = S.missaoIdx;
-  var placarCritico = contar(S.resultados, 'falha') === 2 || contar(S.resultados, 'sucesso') === 2;
+  var papel = botPapel(), priv = modeloPrivado();
 
   if (papel === 'comandante'){
     /* Vota pela lógica pública; às vezes barra um time com hacker que ele conhece. */
@@ -2246,12 +2266,9 @@ function botVotar(time){
     return pub;
   }
   if (botEhHacker()){
-    var hk = time.filter(function(x){ return contem(botConhecidos(), x); }).length +
-             (contem(time, S.botIdx) ? 1 : 0);
-    var precisa = falhasNecessarias(S.n, m);
-    /* Desvia da lógica pública só quando vale muito a pena. */
-    if (placarCritico && hk >= precisa) return true;
-    if (placarCritico && hk === 0 && papel !== 'iniciante') return false;
+    /* Hacker vota sempre pela lógica pública. O placar decisivo só pesaria no
+       hammer — e no hammer ele já aprova sempre (regra lá em cima). Desviar
+       antes disso entregaria o bot. */
     return pub;
   }
   return votoPrivadoResistencia(time, priv);
@@ -2474,7 +2491,7 @@ function balaoBotHTML(){
   var lista = outrosQueBot().map(function(x){ return {x:x, p:chanceHacker(mod, x)}; })
                 .sort(function(a, b){ return b.p - a.p; });
   h += '<div class="ajustes-fundo" onclick="if(event.target===this){S.botAberto=false;render()}">' +
-       '<div class="ajustes"><div class="eyebrow">🤖 O que o bot acha agora</div>' +
+       '<div class="ajustes"><div class="eyebrow">🤖 O que ' + esc(nomeDe(S.botIdx)) + ' acha agora</div>' +
        '<div class="small muted mt8">Chance de cada um ser hacker, só pelo que é público: ' +
        'missões e votos.</div><div class="mt12">';
   lista.forEach(function(it){
@@ -2490,7 +2507,7 @@ function balaoBotHTML(){
 
 /* O motivo mais forte, em português de mesa. */
 function motivoBot(mod, x, p){
-  var nome = function(i){ return i === S.botIdx ? 'o bot' : nomeDe(i); };
+  var nome = function(i){ return nomeDe(i); };
   var motivos = [];
   eventos('missao').forEach(function(e){
     if (!contem(e.equipe, x)) return;
