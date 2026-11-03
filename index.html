@@ -31,7 +31,10 @@
   --mono:'IBM Plex Mono',ui-monospace,monospace;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;padding:0}
+html,body{margin:0;padding:0;
+  /* Sem "puxar para atualizar": no Chrome do Android, arrastar a tela para baixo no
+     topo recarregava a página e zerava a partida. */
+  overscroll-behavior-y:none}
 body{
   background:
     linear-gradient(rgba(63,182,212,.028) 1px,transparent 1px) 0 0/100% 3px,
@@ -624,6 +627,7 @@ function render(){
     historico:telaHistorico, exame:telaExame, tramas:telaTramasEdit
   };
   $('app').innerHTML = telas[S.tela]();
+  salvarPartida();
   /* Nas telas em que o celular está na mão de um só, a engrenagem some: um toque
      sem querer abriria o painel por cima do selo. */
   document.body.classList.toggle('segredo',
@@ -1909,7 +1913,36 @@ if ('serviceWorker' in navigator && location.protocol === 'https:'){
   navigator.serviceWorker.register('sw.js', {updateViaCache:'none'})
     .then(function(r){ r.update(); }).catch(function(){});
 }
-S = estadoInicial();
+/* ------------------------------------------------------------
+   PARTIDA SALVA NO APARELHO
+   O celular pode matar o app quando você troca para outro (Uber, WhatsApp...).
+   Ao voltar ele recarrega do zero; por isso o estado inteiro é gravado no
+   localStorage a cada tela e restaurado na abertura.
+   ------------------------------------------------------------ */
+var CHAVE_PARTIDA = 'resistencia_partida';
+function salvarPartida(){
+  try { localStorage.setItem(CHAVE_PARTIDA, JSON.stringify(S)); } catch(e){}
+}
+function restaurarPartida(){
+  try {
+    var salvo = JSON.parse(localStorage.getItem(CHAVE_PARTIDA) || 'null');
+    if (!salvo || !salvo.tela) return null;
+    /* Campos que versões novas do app criarem e a partida salva não tiver. */
+    var base = estadoInicial();
+    for (var k in base) if (!(k in salvo)) salvo[k] = base[k];
+    /* Nada secreto volta aberto: quem pegar o celular vê o selo de novo,
+       e não o papel ou o exame da última pessoa. */
+    salvo.viuPapel = false; salvo.viuExame = false; salvo.armado = false;
+    return salvo;
+  } catch(e){ return null; }
+}
+/* O cronômetro anda sem render(); grava também quando o app vai para o fundo. */
+document.addEventListener('visibilitychange', function(){
+  if (document.visibilityState === 'hidden') salvarPartida();
+});
+window.addEventListener('pagehide', salvarPartida);
+
+S = restaurarPartida() || estadoInicial();
 salvarAjustes();
 render();
 </script>
