@@ -103,6 +103,29 @@ input[type=text]:focus{outline:none;border-color:var(--gold);background:#101820}
 .name-line.arrastando input{border-color:var(--gold)}
 .name-line.anima{transition:transform .15s ease}
 .grupos{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.bot-nome{width:100%;padding:12px 13px;border:1px dashed var(--line);clip-path:var(--notch-sm);
+  background:#0D1218;color:var(--gold-soft);font-family:var(--disp);font-size:16px}
+/* Votação nominal (só com bot) */
+.voto-linha{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line)}
+.voto-linha:first-child{border-top:0}
+.voto-linha .vn{flex:1;font-weight:600;font-size:15px;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.vbtn{width:52px;height:42px;border:1px solid var(--line);background:var(--panel-2);font-size:20px;
+  cursor:pointer;filter:grayscale(1);opacity:.45}
+.vbtn.sim.on{filter:none;opacity:1;background:rgba(46,160,90,.22);border-color:#3FB56B}
+.vbtn.nao.on{filter:none;opacity:1;background:rgba(183,36,53,.22);border-color:var(--gold)}
+.vbtn:disabled{cursor:default}
+.voto-bot{font-family:var(--mono);font-size:10px;color:var(--gold-soft);letter-spacing:.08em}
+.votos-hist{font-size:12.5px;margin-top:6px;color:var(--muted);line-height:1.5}
+/* Balão do bot */
+.balao{position:fixed;left:12px;top:calc(10px + env(safe-area-inset-top,0px));z-index:40;
+  width:40px;height:40px;border-radius:50%;background:var(--panel-2);border:1px solid var(--gold);
+  font-size:19px;display:grid;place-items:center;cursor:pointer;box-shadow:0 4px 18px rgba(0,0,0,.5)}
+.op-linha{padding:10px 0;border-top:1px solid var(--line)}
+.op-linha:first-child{border-top:0}
+.op-topo{display:flex;justify-content:space-between;gap:10px;font-weight:600}
+.op-pct{font-family:var(--mono);color:var(--gold-soft)}
+.op-barra{height:4px;background:var(--line);margin-top:6px}
+.op-barra i{display:block;height:100%;background:var(--gold)}
 .grupo{display:flex;align-items:center;background:var(--panel-2);border:1px solid var(--line)}
 .grupo.on{border-color:var(--gold)}
 .grupo button{background:none;border:0;color:var(--parch);font-family:var(--disp);font-size:13.5px;
@@ -417,7 +440,11 @@ function estadoInicial(){
     restanteT:PRAZO_MS, prazoKeyT:'', sorteioAlvo:null, modoHacker:'assimetria', cacaAberta:false,
     exame:null, viuExame:false, armado:false, armadoPara:-1,
     vencedor:null, motivo:'', apontado:null,
-    cacaAntecipada:false, voltarCaca:'proposta'
+    cacaAntecipada:false, voltarCaca:'proposta',
+    /* Bot: um assento controlado pelo app (só no modo Experiente e Iniciante).
+       botFalhas guarda, por missão, se ELE sabotou — memória privada do bot, que
+       nenhuma tela mostra. votos = votação em andamento (um por assento). */
+    bot:false, botIdx:-1, botFalhas:{}, botPropKey:'', votos:[], botAberto:false
   };
 }
 
@@ -626,10 +653,11 @@ function render(){
     apurar:telaApurar, resultado:telaResultado, caca:telaCaca, fim:telaFim,
     historico:telaHistorico, exame:telaExame, tramas:telaTramasEdit
   };
-  $('app').innerHTML = telas[S.tela]();
+  $('app').innerHTML = telas[S.tela]() + balaoBotHTML();
   salvarPartida();
   /* Nas telas em que o celular está na mão de um só, a engrenagem some: um toque
      sem querer abriria o painel por cima do selo. */
+  document.body.classList.toggle('combot', !!(S.bot && S.jogadores.length));
   document.body.classList.toggle('segredo',
     S.tela === 'revelacao' || S.tela === 'exame' || S.tela === 'missao');
   window.scrollTo(0, 0);
@@ -656,8 +684,10 @@ function telaSetup(){
   h += '<div class="names" id="nomes">';
   for (var i = 0; i < S.n; i++){
     h += '<div class="name-line"><span class="num">' + (i + 1) + '</span>' +
-         '<input type="text" autocomplete="off" placeholder="Jogador ' + (i + 1) + '" ' +
-         'value="' + esc(S.nomes[i]) + '" oninput="setNome(' + i + ',this.value)">' +
+         (S.nomes[i] === BOT_TAG
+           ? '<div class="bot-nome">🤖 Bot</div>'
+           : '<input type="text" autocomplete="off" placeholder="Jogador ' + (i + 1) + '" ' +
+             'value="' + esc(S.nomes[i]) + '" oninput="setNome(' + i + ',this.value)">') +
          '<span class="drag" onpointerdown="iniciarArraste(event,' + i + ')" ' +
          'aria-label="Arrastar para mudar a posição">⠿</span></div>';
   }
@@ -733,10 +763,21 @@ function telaSetup(){
     h += '<div class="hint">O Iniciante joga sem coordenação — pode sabotar uma missão que os ' +
          'colegas queriam deixar passar. Duas sabotagens onde bastava uma entregam muita coisa.</div>';
   }
+  /* O bot só existe com Experiente e Iniciante: as regras dele foram pensadas
+     para esses papéis. */
+  if (modoHacker() === 'assimetria'){
+    var botCabe = S.bot || S.n < 10;
+    h += '<div class="mt12"><div class="role-toggle ' + (S.bot ? 'on' : '') + (botCabe ? '' : ' off') +
+         '" onclick="toggleBot()">' +
+         '<div class="box"></div><div><div class="rt-name">🤖 Jogar com bot</div>' +
+         '<div class="small muted">Um jogador a mais controlado pelo app: vota, monta times quando ' +
+         'é líder e joga a carta de missão sozinho. Entra com votação nominal e sem cartas de trama.' +
+         '</div></div></div></div>';
+  }
   h += '</div>';
 
   h += '<div class="card"><div class="eyebrow">Cartas de Trama</div><div class="mt12">';
-  h += '<div class="role-toggle ' + (S.tramaOn ? 'on' : '') + '" onclick="toggleTramaOn()">' +
+  h += '<div class="role-toggle ' + (S.tramaOn ? 'on' : '') + (S.bot ? ' off' : '') + '" onclick="toggleTramaOn()">' +
        '<div class="box"></div><div><div class="rt-name">Jogar com cartas de trama</div>' +
        '<div class="small muted">A cada rodada o líder sorteia ' + tramasPorRodada(S.n) +
        ' carta' + (tramasPorRodada(S.n) > 1 ? 's' : '') + ' e distribui para os outros jogadores.' +
@@ -756,7 +797,12 @@ function telaSetup(){
   return h;
 }
 
-function setN(k){ S.n = k; render(); }
+function setN(k){
+  if (S.bot && S.nomes.indexOf(BOT_TAG) === -1) S.bot = false;
+  S.n = k;
+  ajustarBot();
+  render();
+}
 function setNome(i, v){ S.nomes[i] = v; }
 
 /* ------------------------------------------------------------
@@ -833,13 +879,20 @@ function gruposHTML(){
 function carregarGrupo(k){
   var gr = lerGrupos()[k]; if (!gr) return;
   S.nomes = gr.jogadores.slice();
+  var total = gr.jogadores.length;
+  if (S.bot){
+    if (total < 10){ S.nomes.splice(total, 0, BOT_TAG); total++; }
+    else S.bot = false;
+  }
   while (S.nomes.length < 10) S.nomes.push('');
-  S.n = Math.max(5, Math.min(10, gr.jogadores.length));
+  S.n = Math.max(5, Math.min(10, total));
   S.grupoAtual = gr.nome;
   render();
 }
 function salvarGrupo(){
-  var jogadores = S.nomes.slice(0, S.n).map(function(x){ return (x || '').trim(); });
+  /* O bot não faz parte do grupo: é ligado à parte, em cada partida. */
+  var jogadores = S.nomes.slice(0, S.n).filter(function(x){ return x !== BOT_TAG; })
+                   .map(function(x){ return (x || '').trim(); });
   if (!jogadores.some(function(x){ return x; })){
     alert('Preencha pelo menos um nome antes de salvar.'); return;
   }
@@ -865,9 +918,9 @@ function toggleCaca(){ if (!S.comandanteOn) return; S.caca = !S.caca; render(); 
 function toggleComandante(){ S.comandanteOn = !S.comandanteOn; render(); }
 function setModoHacker(m){
   if (m === 'rede' && S.n < MIN_REDE) return;  /* pointer-events só barra o dedo */
-  S.modoHacker = m; render();
+  S.modoHacker = m; ajustarBot(); render();
 }
-function toggleTramaOn(){ S.tramaOn = !S.tramaOn; render(); }
+function toggleTramaOn(){ if (S.bot) return; S.tramaOn = !S.tramaOn; render(); }
 function abrirTramas(){ S.tela = 'tramas'; render(); }
 function fecharTramas(){ S.tela = 'setup'; render(); }
 function marcarTramas(v){
@@ -947,7 +1000,9 @@ function distribuir(){
   S.jogadores = [];
   S.maos = [];
   for (var i = 0; i < S.n; i++){
-    S.jogadores.push({nome:(S.nomes[i] || '').trim() || ('Jogador ' + (i + 1)), papel:lista[i]});
+    var ehBot = S.bot && S.nomes[i] === BOT_TAG;
+    S.jogadores.push({nome: ehBot ? 'Bot' : ((S.nomes[i] || '').trim() || ('Jogador ' + (i + 1))),
+                      papel:lista[i], bot:ehBot});
     S.maos.push([]);
   }
 
@@ -965,7 +1020,12 @@ function distribuir(){
   if (baralho.length > lim) baralho = baralho.slice(0, lim);
   S.baralho = baralho;
 
-  S.idxRev = 0; S.viuPapel = false;
+  S.botIdx = -1;
+  S.jogadores.forEach(function(j, k){ if (j.bot) S.botIdx = k; });
+  if (S.botIdx === -1) S.bot = false;
+  if (S.bot){ S.tramaOn = false; S.baralho = []; }
+  S.botFalhas = {}; S.botPropKey = ''; S.votos = [];
+  S.idxRev = proxHumano(-1); S.viuPapel = false;
   S.liderIdx = Math.floor(Math.random() * S.n);
   S.tela = 'revelacao';
   render();
@@ -1005,7 +1065,7 @@ function telaRevelacao(){
   h += '</div></div>';
   h += '<button class="btn mt16' + (S.viuPapel ? '' : ' oculto') + '" id="btnProx" ' +
        'onclick="proxRevelacao()"' + (S.viuPapel ? '' : ' disabled') + '>' +
-       (S.idxRev === S.n - 1 ? 'Começar a partida' : 'Já vi — passar adiante') + '</button>';
+       (proxHumano(S.idxRev) >= S.n ? 'Começar a partida' : 'Já vi — passar adiante') + '</button>';
   h += '<div class="rule">Ninguém deve ver a tela de outro jogador. Se o celular passar de mão, ' +
        'o selo se fecha sozinho.</div>';
   return h;
@@ -1032,8 +1092,15 @@ function ligarSelo(){
   selo.addEventListener('contextmenu', function(e){ e.preventDefault(); });
 }
 
+/* Próximo assento humano depois de i (o bot nunca recebe o celular). */
+function proxHumano(i){
+  var k = i + 1;
+  while (k < S.n && S.bot && k === S.botIdx) k++;
+  return k;
+}
 function proxRevelacao(){
-  if (S.idxRev < S.n - 1){ S.idxRev++; S.viuPapel = false; return render(); }
+  var k = proxHumano(S.idxRev);
+  if (k < S.n){ S.idxRev = k; S.viuPapel = false; return render(); }
   abrirRodada();
 }
 
@@ -1415,6 +1482,21 @@ function telaProposta(){
      zera o minuto. Voltar de "Corrigir a equipe" NÃO zera — é a mesma proposta. */
   if (S.prazoKey !== chavePrazo()){ S.prazoKey = chavePrazo(); S.restante = PRAZO_MS; }
   var k = tamanhoEquipe(), h = trilhaHTML();
+  var botLider = S.bot && S.liderIdx === S.botIdx;
+  /* O bot monta o time uma vez por proposta; voltar à tela não sorteia de novo. */
+  if (botLider && S.botPropKey !== chavePrazo()){
+    S.botPropKey = chavePrazo();
+    S.equipe = botMontarTime();
+  }
+  if (botLider){
+    h += '<div class="card"><div class="eyebrow">Missão ' + (S.missaoIdx + 1) + ' · Líder</div>';
+    h += '<h2 class="mt8" style="font-size:23px">🤖 Bot</h2>';
+    h += '<div class="small muted mt8">' + (S.rejeicoes === 4 ? 'Hammer — última proposta. ' : '') +
+         'O bot montou o time:</div>' + tagsEquipe(S.equipe) + '</div>';
+    h += '<button class="btn" onclick="irVotacao()">Levar à votação</button>';
+    h += botaoAssassinar();
+    return h;
+  }
   h += '<div class="card">';
   h += '<div class="eyebrow">Missão ' + (S.missaoIdx + 1) + ' · Líder</div>';
   h += '<h2 class="mt8" style="font-size:23px">' + esc(nomeDe(S.liderIdx)) + '</h2>';
@@ -1459,12 +1541,20 @@ function toggleEquipe(i){
   else if (S.equipe.length < tamanhoEquipe()) S.equipe.push(i);
   render();
 }
-function irVotacao(){ S.tela = 'votacao'; render(); }
+function irVotacao(){
+  if (S.bot){
+    S.votos = [];
+    for (var i = 0; i < S.n; i++) S.votos.push(null);
+    S.votos[S.botIdx] = botVotar(S.equipe);
+  }
+  S.tela = 'votacao'; render();
+}
 
 /* ------------------------------------------------------------
    6. VOTAÇÃO
    ------------------------------------------------------------ */
 function telaVotacao(){
+  if (S.bot) return telaVotacaoBot();
   var h = trilhaHTML();
   h += '<div class="card"><div class="eyebrow">Votação aberta</div>';
   h += '<div class="small muted mt8">' + esc(nomeDe(S.liderIdx)) + ' propôs:</div>';
@@ -1486,14 +1576,62 @@ function telaVotacao(){
 
 function voltarProposta(){ S.tela = 'proposta'; render(); }
 
-function votou(aprovada){
-  S.historico.push({
+/* Votação com bot: cada voto fica registrado — é o que o bot usa para raciocinar.
+   O voto do bot aparece primeiro e travado: ele é o formador de opinião. */
+function telaVotacaoBot(){
+  var h = trilhaHTML(), faltam = 0;
+  h += '<div class="card"><div class="eyebrow">Votação · proposta ' + (S.rejeicoes + 1) +
+       (S.rejeicoes === 4 ? ' · hammer' : '') + '</div>';
+  h += '<div class="small muted mt8">' + esc(nomeDe(S.liderIdx)) + ' propôs:</div>' + tagsEquipe(S.equipe);
+  h += '<div class="btn-row mt12">' +
+       '<button class="btn btn--ghost btn--sm" onclick="votarTodos(false)">Todos 👎</button>' +
+       '<button class="btn btn--ghost btn--sm" onclick="votarTodos(true)">Todos 👍</button></div>';
+  h += '<div class="mt12">';
+  for (var i = 0; i < S.n; i++){
+    var v = S.votos[i], ehB = i === S.botIdx;
+    if (v === null) faltam++;
+    h += '<div class="voto-linha"><div class="vn">' + esc(nomeDe(i)) +
+         (ehB ? ' <span class="voto-bot">🤖 VOTOU</span>' : '') + '</div>' +
+         '<button class="vbtn sim' + (v === true ? ' on' : '') + '"' + (ehB ? ' disabled' : '') +
+           ' onclick="marcarVoto(' + i + ',true)" aria-label="Aprovar">👍</button>' +
+         '<button class="vbtn nao' + (v === false ? ' on' : '') + '"' + (ehB ? ' disabled' : '') +
+           ' onclick="marcarVoto(' + i + ',false)" aria-label="Rejeitar">👎</button></div>';
+  }
+  h += '</div></div>';
+  h += '<button class="btn" onclick="confirmarVotos()"' + (faltam ? ' disabled' : '') + '>' +
+       (faltam ? 'Faltam ' + faltam + ' voto' + (faltam > 1 ? 's' : '') : 'Confirmar votação') + '</button>';
+  if (S.liderIdx !== S.botIdx)
+    h += '<button class="btn btn--ghost btn--sm mt12" onclick="voltarProposta()">Corrigir a equipe</button>';
+  h += botaoAssassinar();
+  return h;
+}
+function marcarVoto(i, v){
+  if (i === S.botIdx) return;
+  S.votos[i] = v;
+  var y = window.scrollY; render(); window.scrollTo(0, y);
+}
+function votarTodos(v){
+  for (var i = 0; i < S.n; i++) if (i !== S.botIdx) S.votos[i] = v;
+  var y = window.scrollY; render(); window.scrollTo(0, y);
+}
+function confirmarVotos(){
+  if (S.votos.some(function(v){ return v === null; })) return;
+  /* Maioria simples aprova; empate rejeita (regra do jogo). */
+  var sim = contar(S.votos, true);
+  votou(sim > S.n / 2, S.votos.slice());
+}
+
+function votou(aprovada, votos){
+  var ev = {
     tipo:'voto', missao:S.missaoIdx, tentativa:S.rejeicoes + 1,
     lider:S.liderIdx, equipe:S.equipe.slice(), aprovada:aprovada
-  });
+  };
+  if (votos) ev.votos = votos;
+  S.historico.push(ev);
   if (aprovada){
     S.rejeicoes = 0; S.idxCarta = 0; S.cartas = [];
     S.tela = 'missao';
+    if (S.bot && cartasDoBot()){ return render(); }
   } else {
     S.rejeicoes++;
     S.liderIdx = (S.liderIdx + 1) % S.n;
@@ -1554,6 +1692,7 @@ function jogarCarta(falhou){
   var quemJoga = S.equipe[S.idxCarta];
   S.cartas.push(falhou && ehMal(quemJoga));
   S.idxCarta++;
+  if (S.bot) cartasDoBot();
   if (S.idxCarta < S.equipe.length) return render();
   /* A última carta NÃO apura nada: quem estivesse com o celular na mão veria o
      desfecho antes da mesa. O resultado só é calculado em revelarMissao(), com
@@ -1657,6 +1796,11 @@ function telaHistorico(){
              ' <span style="color:' + (v.aprovada ? 'var(--azure)' : 'var(--danger)') + ';font-weight:700">' +
              (v.aprovada ? 'APROVADA' : 'REJEITADA') + '</span></div>';
         h += tagsEquipe(v.equipe);
+        if (v.votos){
+          var a = [], r = [];
+          v.votos.forEach(function(x, k){ (x ? a : r).push(esc(nomeDe(k))); });
+          h += '<div class="votos-hist">👍 ' + (a.join(', ') || '—') + '<br>👎 ' + (r.join(', ') || '—') + '</div>';
+        }
       }
       h += '</div>';
     });
@@ -1806,17 +1950,18 @@ function telaFim(){
 
 function guardarConfig(){
   return {n:S.n, tramaOn:S.tramaOn, tramaOp:Object.assign({}, S.tramaOp), caca:S.caca, grupoAtual:S.grupoAtual,
-          comandanteOn:S.comandanteOn, modoHacker:S.modoHacker, nomes:S.nomes.slice()};
+          comandanteOn:S.comandanteOn, modoHacker:S.modoHacker, nomes:S.nomes.slice(), bot:S.bot};
 }
 function aplicarConfig(cfg){
   S = estadoInicial();
   S.n = cfg.n; S.tramaOn = cfg.tramaOn; S.tramaOp = cfg.tramaOp;
   S.caca = cfg.caca; S.comandanteOn = cfg.comandanteOn;
   S.modoHacker = cfg.modoHacker; S.nomes = cfg.nomes; S.grupoAtual = cfg.grupoAtual || null;
+  S.bot = !!cfg.bot;
 }
 function novaPartida(){
   var cfg = guardarConfig();
-  for (var i = 0; i < S.n; i++) cfg.nomes[i] = S.jogadores[i].nome;
+  for (var i = 0; i < S.n; i++) cfg.nomes[i] = S.jogadores[i].bot ? BOT_TAG : S.jogadores[i].nome;
   aplicarConfig(cfg);
   distribuir();
 }
@@ -1913,6 +2058,471 @@ if ('serviceWorker' in navigator && location.protocol === 'https:'){
   navigator.serviceWorker.register('sw.js', {updateViaCache:'none'})
     .then(function(r){ r.update(); }).catch(function(){});
 }
+/* ============================================================
+   BOT — um assento controlado pelo app
+   Só existe no modo Experiente e Iniciante e sem cartas de trama.
+
+   Como ele pensa: em vez de dar "nota de suspeita", ele lista TODAS as
+   combinações possíveis de quem são os hackers (os "mundos") e dá um peso a
+   cada uma conforme o histórico público (missões e votos). A chance de alguém
+   ser hacker = peso dos mundos em que ele é hacker / peso total.
+
+   Dois modelos:
+   - PÚBLICO: o que um jogador da Resistência concluiria olhando só a mesa,
+     tratando o bot como inocente. É o que o balão mostra, para QUALQUER papel —
+     assim o balão nunca vaza o que o bot sabe de verdade.
+   - PRIVADO: o mesmo cálculo somado ao que o papel do bot sabe (hackers que o
+     Comandante vê, aliados do hacker, as próprias sabotagens). É o que ele usa
+     para votar, montar time e decidir a carta.
+   ============================================================ */
+var BOT_TAG = '@bot';
+
+function toggleBot(){
+  if (S.bot){ desligarBot(); return render(); }
+  if (modoHacker() !== 'assimetria' || S.n >= 10) return;
+  S.bot = true;
+  S.nomes.splice(S.n, 0, BOT_TAG);
+  S.nomes = S.nomes.slice(0, 10);
+  S.n++;
+  S.tramaOn = false;
+  render();
+}
+function desligarBot(){
+  var k = S.nomes.indexOf(BOT_TAG);
+  if (k !== -1){ S.nomes.splice(k, 1); S.nomes.push(''); if (S.n > 5) S.n--; }
+  S.bot = false;
+}
+/* Mantém o bot coerente com a mesa: some se o modo mudar e nunca fica fora
+   dos assentos em uso quando o número de jogadores diminui. */
+function ajustarBot(){
+  if (!S.bot) return;
+  if (modoHacker() !== 'assimetria'){ desligarBot(); return; }
+  var k = S.nomes.indexOf(BOT_TAG);
+  if (k >= S.n){ S.nomes.splice(k, 1); S.nomes.splice(S.n - 1, 0, BOT_TAG); }
+}
+
+/* ---------- utilidades ---------- */
+function combinacoes(lista, k){
+  var out = [];
+  (function rec(ini, acc){
+    if (acc.length === k){ out.push(acc.slice()); return; }
+    for (var i = ini; i < lista.length; i++){ acc.push(lista[i]); rec(i + 1, acc); acc.pop(); }
+  })(0, []);
+  return out;
+}
+function sorteia(lista){ return lista[Math.floor(Math.random() * lista.length)]; }
+function outrosQueBot(){
+  var o = []; for (var i = 0; i < S.n; i++) if (i !== S.botIdx) o.push(i); return o;
+}
+function contem(lista, x){ return lista.indexOf(x) !== -1; }
+function mesmoTime(a, b){
+  return a.length === b.length && a.every(function(x){ return contem(b, x); });
+}
+function eventos(tipo){ return S.historico.filter(function(e){ return e.tipo === tipo; }); }
+
+/* ---------- conhecimento do papel ---------- */
+function botPapel(){ return papelDe(S.botIdx); }
+function botEhHacker(){ return ehMal(S.botIdx); }
+/* Hackers que o bot conhece com certeza pelo papel (sem contar ele). */
+function botConhecidos(){
+  var p = botPapel();
+  if (p === 'resistencia' || p === 'iniciante') return [];
+  return vistosPor(S.botIdx);
+}
+
+/* ---------- o modelo de mundos ----------
+   privado=false → modelo público (bot inocente, sem conhecimento de papel).
+   Devolve {mundos:[{h:[...], w}], total} — h são os hackers além do bot. */
+function modelo(privado){
+  var H = MESAS[S.n].mal, outros = outrosQueBot();
+  var botH = privado && botEhHacker();
+  var obrig = privado ? botConhecidos() : [];
+  var tam = botH ? H - 1 : H;
+  var mundos = [];
+  combinacoes(outros, tam).forEach(function(h){
+    if (!obrig.every(function(x){ return contem(h, x); })) return;
+    /* O Experiente sabe exatamente quem é hacker: sobra um único mundo. */
+    if (privado && botPapel() === 'experiente' && h.length !== obrig.length) return;
+    mundos.push({h:h, w:pesoMundo(h, privado && botH)});
+  });
+  var total = 0; mundos.forEach(function(m){ total += m.w; });
+  return {mundos:mundos, total:total};
+}
+
+/* Peso de um mundo = quão bem ele explica o que aconteceu na mesa. */
+function pesoMundo(h, contaBotHacker){
+  var w = 1;
+  function nH(time){ var c = 0; time.forEach(function(x){ if (contem(h, x)) c++; }); return c; }
+
+  eventos('missao').forEach(function(e){
+    var hk = nH(e.equipe);
+    var botF = (contaBotHacker && contem(e.equipe, S.botIdx) && S.botFalhas[e.missao]) ? 1 : 0;
+    var precisa = e.falhas - botF;
+    if (hk < precisa) w *= 0.0005;                    /* fracasso sem hacker: quase impossível */
+    else if (e.falhas === 0) w *= Math.pow(e.missao === 0 ? 0.9 : 0.55, hk);  /* hacker que segurou */
+    else if (hk > precisa) w *= Math.pow(0.8, hk - precisa);
+  });
+
+  var falhou = {};
+  eventos('missao').forEach(function(e){ falhou[e.missao] = e.falhas > 0; });
+
+  eventos('voto').forEach(function(e){
+    var hk = nH(e.equipe), hammer = e.tentativa >= 5, quatro = falhasNecessarias(S.n, e.missao) === 2;
+    /* Líder hacker costuma pôr hacker no time; na missão de dois fracassos, dois. */
+    if (contem(h, e.lider) && e.lider !== S.botIdx){
+      w *= hk >= 1 ? 1.2 : 0.85;
+      if (quatro && hk >= 2) w *= 1.4;
+    }
+    if (!e.votos) return;
+    e.votos.forEach(function(v, j){
+      if (j === S.botIdx || !contem(h, j)) return;
+      if (hammer && !v) w *= 3;                       /* rejeitar o hammer é o maior sinal */
+      if (e.aprovada && falhou[e.missao] === true){ w *= v ? 1.4 : 0.8; }
+      if (!hammer){
+        if (v && hk >= 1) w *= 1.25;
+        if (!v && hk === 0) w *= 1.15;
+        if (v && !contem(e.equipe, j)) w *= 1.1;
+      }
+    });
+  });
+  return w;
+}
+
+function chanceHacker(mod, x){
+  if (!mod.total) return 0;
+  var s = 0; mod.mundos.forEach(function(m){ if (contem(m.h, x)) s += m.w; });
+  return s / mod.total;
+}
+/* Chance do time NÃO ter hackers suficientes para derrubar a missão. */
+function chanceTimePassa(mod, time, missao){
+  if (!mod.total) return 0;
+  var precisa = falhasNecessarias(S.n, missao), botH = botEhHacker();
+  var s = 0;
+  mod.mundos.forEach(function(m){
+    var c = 0; time.forEach(function(x){ if (contem(m.h, x)) c++; });
+    if (mod.privado && botH && contem(time, S.botIdx)) c++;
+    if (c < precisa) s += m.w;
+  });
+  return s / mod.total;
+}
+function modeloPrivado(){ var m = modelo(true); m.privado = true; return m; }
+function modeloPublico(){ var m = modelo(false); m.privado = false; return m; }
+
+/* Hacker com certeza (para o bot) e se já sabotou alguma vez com certeza. */
+function certoHacker(mod, x){ return chanceHacker(mod, x) > 0.999 || contem(botConhecidos(), x); }
+function certoInocente(mod, x){ return x === S.botIdx ? !botEhHacker() : chanceHacker(mod, x) < 0.001; }
+function jaHackeou(mod, x){
+  return eventos('missao').some(function(e){
+    if (!contem(e.equipe, x) || !e.falhas) return false;
+    var botF = (contem(e.equipe, S.botIdx) && S.botFalhas[e.missao]) ? 1 : 0;
+    var outrasF = e.falhas - botF;
+    if (outrasF <= 0) return false;
+    var cand = e.equipe.filter(function(y){ return y !== S.botIdx && chanceHacker(mod, y) > 0.001; });
+    return contem(cand, x) && outrasF >= cand.length;
+  });
+}
+/* Iniciante deduzido (para o intermediário): o único possível fora dos aliados. */
+function inicianteDeduzido(mod){
+  var cand = outrosQueBot().filter(function(x){
+    return !contem(botConhecidos(), x) && chanceHacker(mod, x) > 0.999;
+  });
+  return cand.length ? cand[0] : -1;
+}
+
+/* ============================================================
+   VOTO
+   ============================================================ */
+function botVotar(time){
+  var hammer = S.rejeicoes >= 4;
+  if (hammer) return true;                      /* nunca rejeita o hammer, qualquer papel */
+  var pub = votoPublico(time);
+  var papel = botPapel(), priv = modeloPrivado(), m = S.missaoIdx;
+  var placarCritico = contar(S.resultados, 'falha') === 2 || contar(S.resultados, 'sucesso') === 2;
+
+  if (papel === 'comandante'){
+    /* Vota pela lógica pública; às vezes barra um time com hacker que ele conhece. */
+    var temConhecido = time.some(function(x){ return contem(botConhecidos(), x); });
+    if (pub && temConhecido && Math.random() < 0.3) return false;
+    return pub;
+  }
+  if (botEhHacker()){
+    var hk = time.filter(function(x){ return contem(botConhecidos(), x); }).length +
+             (contem(time, S.botIdx) ? 1 : 0);
+    var precisa = falhasNecessarias(S.n, m);
+    /* Desvia da lógica pública só quando vale muito a pena. */
+    if (placarCritico && hk >= precisa) return true;
+    if (placarCritico && hk === 0 && papel !== 'iniciante') return false;
+    return pub;
+  }
+  return votoPrivadoResistencia(time, priv);
+}
+
+/* A política pública: o que um bot da Resistência votaria com o que é público.
+   Hackers e Comandante partem dela para não se denunciarem pelo voto. */
+function votoPublico(time){ return votoPrivadoResistencia(time, modeloPublico()); }
+
+function votoPrivadoResistencia(time, mod){
+  var m = S.missaoIdx;
+  /* Hacker certo no time: rejeita, mesmo estando dentro. */
+  if (time.some(function(x){ return x !== S.botIdx && chanceHacker(mod, x) > 0.999; })) return false;
+  if (contem(time, S.botIdx)) return true;
+  var passaram = eventos('missao').filter(function(e){ return e.falhas === 0; });
+  /* Mesmo time que já passou. */
+  if (passaram.some(function(e){ return mesmoTime(e.equipe, time); })) return true;
+  /* Missão maior: o time que passou + uma pessoa limpa pela matemática. */
+  if (passaram.some(function(e){
+    if (e.equipe.length !== time.length - 1) return false;
+    if (!e.equipe.every(function(x){ return contem(time, x); })) return false;
+    var extra = time.filter(function(x){ return !contem(e.equipe, x); })[0];
+    return chanceHacker(mod, extra) < 0.25;
+  })) return true;
+  /* Tão bom quanto o melhor time que ele mesmo montaria. */
+  var melhor = melhorTime(mod, tamanhoEquipe(), [S.botIdx], []);
+  return chanceTimePassa(mod, time, m) >= chanceTimePassa(mod, melhor, m) - 0.02;
+}
+
+/* ============================================================
+   LIDERANÇA
+   ============================================================ */
+/* Melhor time de tamanho k contendo 'fixos' e sem ninguém de 'fora',
+   pela chance de passar no modelo dado. Empates são sorteados. */
+function melhorTime(mod, k, fixos, fora){
+  var pool = [];
+  for (var i = 0; i < S.n; i++) if (!contem(fixos, i) && !contem(fora, i)) pool.push(i);
+  var falta = k - fixos.length;
+  if (falta < 0) return fixos.slice(0, k);
+  if (falta > pool.length) pool = pool.concat(fora.filter(function(x){ return !contem(fixos, x); }));
+  var melhor = [], nota = -1;
+  combinacoes(pool, falta).forEach(function(c){
+    var t = fixos.concat(c), p = chanceTimePassa(mod, t, S.missaoIdx);
+    if (p > nota + 1e-9){ nota = p; melhor = [t]; }
+    else if (Math.abs(p - nota) <= 1e-9) melhor.push(t);
+  });
+  return melhor.length ? sorteia(melhor) : fixos.slice();
+}
+function aleatorioCom(fixos, k, pool){
+  var resto = embaralhar(pool.filter(function(x){ return !contem(fixos, x); }));
+  return fixos.concat(resto).slice(0, k);
+}
+function todos(){ var t = []; for (var i = 0; i < S.n; i++) t.push(i); return t; }
+
+function botMontarTime(){
+  var k = tamanhoEquipe(), m = S.missaoIdx, eu = S.botIdx, papel = botPapel();
+  var hammer = S.rejeicoes >= 4, priv = modeloPrivado();
+
+  if (papel === 'comandante') return timeComandante(k, m, hammer, priv);
+  if (botEhHacker()) return timeHacker(k, m, priv);
+  /* Resistência: melhor time pela matemática, com ele dentro. */
+  return melhorTime(priv, k, [eu], []);
+}
+
+function timeComandante(k, m, hammer, priv){
+  var eu = S.botIdx, conhecidos = botConhecidos();
+  var limpos = todos().filter(function(x){ return !contem(conhecidos, x); });
+  var inocentes = todos().filter(function(x){ return certoInocente(priv, x); });
+  /* Time sem os hackers que ele vê, escolhido pela matemática. */
+  function semConhecidos(){ return melhorTime(priv, k, [eu], conhecidos); }
+  /* Fora do hammer pode pôr um hacker de propósito, para não parecer perfeito. */
+  function disfarce(){
+    if (Math.random() < 0.5 && conhecidos.length){
+      var base = melhorTime(priv, k - 1, [eu], conhecidos);
+      return base.concat([sorteia(conhecidos)]);
+    }
+    return semConhecidos();
+  }
+  var m2 = eventos('missao').filter(function(e){ return e.missao === 1; })[0];
+
+  if (m === 0) return aleatorioCom([eu], k, todos());
+  if (m === 1) return hammer ? semConhecidos() : disfarce();
+  if (m === 2){
+    if (m2 && m2.falhas === 0){
+      if (m2.equipe.length === k) return m2.equipe.slice();
+      return melhorTime(priv, k, m2.equipe.slice(0, k), conhecidos);
+    }
+    if (!hammer) return disfarce();
+    /* Hammer com a M2 perdida: se já sabe quem é o Iniciante, time exato. */
+    var iniCerto = todos().some(function(x){ return !contem(conhecidos, x) && x !== eu && certoHacker(priv, x); });
+    return iniCerto ? aleatorioCom([eu], k, inocentes) : semConhecidos();
+  }
+  if (m === 3){
+    /* Sempre os 100% inocentes. Sabendo o bastante, time perfeito; senão
+       completa com quem não é hacker conhecido — e em 20% das vezes põe um
+       hacker conhecido, que sozinho não derruba a missão de dois fracassos. */
+    var certos = [eu].concat(embaralhar(inocentes.filter(function(x){ return x !== eu; })));
+    if (certos.length >= k) return certos.slice(0, k);
+    var time = certos.slice();
+    while (time.length < k){
+      var poolL = limpos.filter(function(x){ return !contem(time, x); });
+      var vaiHacker = Math.random() < 0.2 && conhecidos.some(function(x){ return !contem(time, x); }) &&
+                      time.filter(function(x){ return contem(conhecidos, x); }).length === 0;
+      var hackersFora = conhecidos.filter(function(x){ return !contem(time, x); });
+      if (!poolL.length && !hackersFora.length) break;
+      if (vaiHacker || !poolL.length) time.push(sorteia(hackersFora));
+      else time.push(melhorTime(priv, time.length + 1, time, conhecidos).filter(function(x){ return !contem(time, x); })[0]);
+    }
+    return time;
+  }
+  /* M5: o time correto, sempre. */
+  return semConhecidos();
+}
+
+function timeHacker(k, m, priv){
+  var eu = S.botIdx, pub = modeloPublico(), precisa = falhasNecessarias(S.n, m);
+  var aliados = botConhecidos();
+  /* Parece um time razoável aos olhos da mesa, com ele dentro... */
+  if (m === 0 || precisa === 1){
+    /* ...e só ele de hacker conhecido. */
+    return melhorTime(pub, k, [eu], aliados);
+  }
+  /* Missão de dois fracassos: leva o aliado menos queimado. */
+  if (aliados.length){
+    var aliado = aliados.slice().sort(function(a, b){ return chanceHacker(pub, a) - chanceHacker(pub, b); })[0];
+    return melhorTime(pub, k, [eu, aliado], aliados.filter(function(x){ return x !== aliado; }));
+  }
+  /* Iniciante na M4: aposta em quem o modelo dele aponta como hacker. */
+  var suspeito = outrosQueBot().sort(function(a, b){ return chanceHacker(priv, b) - chanceHacker(priv, a); })[0];
+  return melhorTime(pub, k, [eu, suspeito], []);
+}
+
+/* ============================================================
+   CARTA DE MISSÃO
+   ============================================================ */
+/* Joga as cartas do bot que estiverem na vez. Devolve true se a missão
+   terminou nele (aí a tela vai para a apuração). */
+function cartasDoBot(){
+  while (S.idxCarta < S.equipe.length && S.equipe[S.idxCarta] === S.botIdx){
+    var f = botEhHacker() && botSabota();
+    S.botFalhas[S.missaoIdx] = f;
+    S.cartas.push(f);
+    S.idxCarta++;
+  }
+  if (S.idxCarta >= S.equipe.length){ S.tela = 'apurar'; return true; }
+  return false;
+}
+
+function botSabota(){
+  var m = S.missaoIdx, time = S.equipe, lider = S.liderIdx, eu = S.botIdx;
+  var papel = botPapel(), priv = modeloPrivado(), precisa = falhasNecessarias(S.n, m);
+  var outros = time.filter(function(x){ return x !== eu; });
+  if (m === 0) return false;                                   /* nunca a primeira */
+  var placar = contar(S.resultados, 'falha') === 2 || contar(S.resultados, 'sucesso') === 2;
+
+  /* Bot líder com outro hacker no time (missão de um fracasso): hackeia pelo caos,
+     a não ser que o outro já tenha hackeado antes ou seja o Iniciante. Com o
+     Iniciante ele deixa a sabotagem para o Iniciante — mesmo que isso custe a
+     partida (regra definida pela mesa, acima até do placar). */
+  if (lider === eu && precisa === 1){
+    var ehIni = function(x){
+      if (papel === 'experiente') return papelDe(x) === 'iniciante';
+      if (papel === 'impostor') return x === inicianteDeduzido(priv);
+      return false;
+    };
+    var parceiros = outros.filter(function(x){
+      return papel === 'experiente' ? ehMal(x) : certoHacker(priv, x);
+    });
+    if (parceiros.length){
+      if (parceiros.some(ehIni)) return false;
+      if (parceiros.some(function(x){ return jaHackeou(priv, x); })) return placar;
+      return true;
+    }
+  }
+
+  /* Placar acima de tudo. */
+  if (placar) return true;
+
+  if (papel === 'iniciante'){
+    if (precisa >= 2) return true;
+    var outroCerto = outros.some(function(x){ return certoHacker(priv, x) && jaHackeou(priv, x); });
+    return !outroCerto;
+  }
+
+  if (papel === 'experiente'){
+    var aliadosNoTime = outros.filter(function(x){ return ehMal(x); });
+    if (precisa >= 2) return aliadosNoTime.length >= 1;
+    if (lider !== eu && ehMal(lider)) return false;
+    if (outros.some(function(x){ return papelDe(x) === 'iniciante'; })) return false;
+    var inter = outros.filter(function(x){ return papelDe(x) === 'impostor'; });
+    if (inter.length) return !inter.some(function(x){ return jaHackeou(priv, x); });
+    return true;
+  }
+
+  /* Intermediário: conhece o Experiente; o Iniciante, só se deduzir. */
+  var exp = acharPapel('experiente'), ini = inicianteDeduzido(priv);
+  var expNoTime = contem(outros, exp), iniNoTime = ini !== -1 && contem(outros, ini);
+  if (precisa >= 2) return expNoTime || iniNoTime;
+  if (expNoTime && jaHackeou(priv, exp)) return false;
+  if (lider === exp && expNoTime) return false;
+  if (iniNoTime && jaHackeou(priv, ini)) return false;
+  return true;
+}
+
+/* ============================================================
+   BALÃO — a opinião pública do bot
+   ============================================================ */
+var TELAS_BALAO = ['proposta', 'votacao', 'resultado', 'historico'];
+function balaoBotHTML(){
+  if (!S.bot || S.botIdx < 0 || !S.jogadores.length || !contem(TELAS_BALAO, S.tela)) return '';
+  var h = '<button class="balao" onclick="S.botAberto=!S.botAberto;render()" aria-label="Opinião do bot">🤖</button>';
+  if (!S.botAberto) return h;
+  var mod = modeloPublico();
+  var lista = outrosQueBot().map(function(x){ return {x:x, p:chanceHacker(mod, x)}; })
+                .sort(function(a, b){ return b.p - a.p; });
+  h += '<div class="ajustes-fundo" onclick="if(event.target===this){S.botAberto=false;render()}">' +
+       '<div class="ajustes"><div class="eyebrow">🤖 O que o bot acha agora</div>' +
+       '<div class="small muted mt8">Chance de cada um ser hacker, só pelo que é público: ' +
+       'missões e votos.</div><div class="mt12">';
+  lista.forEach(function(it){
+    var pct = Math.round(it.p * 100);
+    h += '<div class="op-linha"><div class="op-topo"><span>' + esc(nomeDe(it.x)) + '</span>' +
+         '<span class="op-pct">' + pct + '%</span></div>' +
+         '<div class="op-barra"><i style="width:' + pct + '%"></i></div>' +
+         '<div class="small muted" style="margin-top:6px">' + motivoBot(mod, it.x, it.p) + '</div></div>';
+  });
+  h += '</div><button class="btn mt12" onclick="S.botAberto=false;render()">Fechar</button></div></div>';
+  return h;
+}
+
+/* O motivo mais forte, em português de mesa. */
+function motivoBot(mod, x, p){
+  var nome = function(i){ return i === S.botIdx ? 'o bot' : nomeDe(i); };
+  var motivos = [];
+  eventos('missao').forEach(function(e){
+    if (!contem(e.equipe, x)) return;
+    if (e.falhas > 0){
+      var comp = e.equipe.filter(function(y){ return y !== x; }).map(nome).join(', ');
+      motivos.push({f:3 + (e.equipe.length <= 2 ? 2 : 0),
+        t:'Estava na M' + (e.missao + 1) + ', que teve ' + e.falhas + ' fracasso' + (e.falhas > 1 ? 's' : '') +
+          (e.equipe.length <= 3 ? ' (time com ' + comp + ')' : '') + '.'});
+    } else if (e.missao > 0){
+      motivos.push({f:-1, t:'Passou limpo na M' + (e.missao + 1) + '.'});
+    }
+  });
+  var aprovFalha = [], falhou = {};
+  eventos('missao').forEach(function(e){ falhou[e.missao] = e.falhas > 0; });
+  eventos('voto').forEach(function(e){
+    if (!e.votos) return;
+    if (e.tentativa >= 5 && e.votos[x] === false)
+      motivos.push({f:4, t:'Rejeitou o hammer na M' + (e.missao + 1) + '.'});
+    if (e.aprovada && falhou[e.missao] && e.votos[x] === true && !contem(e.equipe, x))
+      aprovFalha.push('M' + (e.missao + 1));
+  });
+  /* Sinais de voto e liderança envolvendo quem a mesa já vê como suspeito. */
+  eventos('voto').forEach(function(e){
+    var susp = e.equipe.filter(function(y){ return y !== x && chanceHacker(mod, y) >= 0.7; });
+    if (!susp.length) return;
+    var nomes = susp.map(nome).join(', ');
+    if (e.lider === x)
+      motivos.push({f:1.5, t:'Propôs time com ' + nomes + ' na M' + (e.missao + 1) + '.'});
+    else if (e.votos && e.votos[x] === true && e.tentativa < 5)
+      motivos.push({f:1.2, t:'Aprovou time com ' + nomes + ' na M' + (e.missao + 1) + '.'});
+  });
+  if (aprovFalha.length) motivos.push({f:2, t:'Aprovou time que falhou sem estar nele (' + aprovFalha.join(', ') + ').'});
+  if (p > 0.999) return '<b>Certeza.</b> ' + (motivos.length ? motivos.sort(function(a, b){ return b.f - a.f; })[0].t : '');
+  if (!motivos.length) return 'Sem indícios ainda.';
+  motivos.sort(function(a, b){ return p >= 0.4 ? b.f - a.f : a.f - b.f; });
+  return motivos[0].t;
+}
+
 /* ------------------------------------------------------------
    PARTIDA SALVA NO APARELHO
    O celular pode matar o app quando você troca para outro (Uber, WhatsApp...).
