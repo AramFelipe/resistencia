@@ -1,5 +1,5 @@
 /* Troque a versão a cada atualização do index.html para os celulares baixarem a nova. */
-const VERSAO = 'resistencia-v11';
+const VERSAO = 'resistencia-v12';
 const ARQUIVOS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 /* cache:'reload' na instalação: sem isso o navegador pode entregar a cópia antiga

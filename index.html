@@ -2265,8 +2265,14 @@ function votoPrivadoResistencia(time, mod){
   var m = S.missaoIdx;
   /* Hacker certo no time: rejeita, mesmo estando dentro. */
   if (time.some(function(x){ return x !== S.botIdx && chanceHacker(mod, x) > 0.999; })) return false;
-  if (contem(time, S.botIdx)) return true;
   var passaram = eventos('missao').filter(function(e){ return e.falhas === 0; });
+  /* Suspeito forte no time (bem acima da média da mesa): rejeita, mesmo estando
+     dentro — senão o voto contradiz o que o próprio balão mostra. Só um time
+     idêntico a um que já passou limpo escapa. */
+  var base = MESAS[S.n].mal / (S.n - 1), corte = Math.max(0.65, base + 0.15);
+  var jaPassou = passaram.some(function(e){ return mesmoTime(e.equipe, time); });
+  if (!jaPassou && time.some(function(x){ return x !== S.botIdx && chanceHacker(mod, x) >= corte; })) return false;
+  if (contem(time, S.botIdx)) return true;
   /* Mesmo time que já passou. */
   if (passaram.some(function(e){ return mesmoTime(e.equipe, time); })) return true;
   /* Missão maior: o time que passou + uma pessoa limpa pela matemática. */
